@@ -8,3 +8,4 @@ dash-html-components==1.1.1
 dash-renderer==1.8.2
 dash-table==4.10.1
 gunicorn==20.0.4
+xlrd==1.2.0
