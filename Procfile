@@ -1,1 +1,1 @@
-web: gunicorn COVID19:server --log-file=-
+web: gunicorn app:server --log-file=-
