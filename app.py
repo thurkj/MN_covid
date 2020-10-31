@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 # Load necessary packages
@@ -20,7 +20,7 @@ import dash_html_components as html
 from dash.dependencies import Input, Output
 
 
-# In[ ]:
+# In[2]:
 
 
 url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/'
@@ -45,7 +45,7 @@ while start_date <= end_date:
     start_date += delta
 
 
-# In[ ]:
+# In[3]:
 
 
 # Merge in county-level population.
@@ -53,7 +53,7 @@ pop = pd.read_excel('county_population.xlsx')
 dataset = dataset.merge(pop,on='FIPS',how='outer')
 
 
-# In[ ]:
+# In[4]:
 
 
 dataset = dataset.sort_values(by=['Admin2','Date'])
@@ -64,7 +64,7 @@ dataset['new_deaths'] = dataset.groupby('Admin2')['Deaths'].diff().fillna(0)
 dataset['new_deaths_rolling'] = dataset.groupby('Admin2')['new_deaths'].rolling(7).mean().reset_index(0,drop=True)
 
 
-# In[ ]:
+# In[5]:
 
 
 # MN Dept of Health Statistic
@@ -95,10 +95,11 @@ dataset.loc[(dataset['ratio']>=50), 'schooling'] = 'Elementary and MS/HS distanc
 dataset['text'] = 'County: ' + dataset['Admin2'] + '<br>' +                    'MN Dept of <br>Health Statistic:    '+ dataset['ratio'].astype(float).round(2).astype(str) + '<br>'+                    'Trending:             '+ dataset['trend'] + '<br>'+                    'New Cases / Day: '+ dataset['new_cases_rolling'].astype(float).round(2).astype(str) + '<br>'+                    'Deaths/ Day:         '+ dataset['new_deaths_rolling'].astype(float).round(2).astype(str)
 
 
-# In[ ]:
+# In[6]:
 
 
 df = dataset.groupby('Admin2').tail(1) # Keep only the last observation
+del dataset
 
 with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
     counties = json.load(response)
@@ -144,7 +145,7 @@ fig_map.update_layout(margin={"r":0,"t":50,"l":0,"b":0},
                       )
 
 
-# In[ ]:
+# In[7]:
 
 
 url = 'https://api.census.gov/data/2019/pep/population?get=NAME,POP&for=state:*'
@@ -185,7 +186,7 @@ else:
     print('Server busy')
 
 
-# In[ ]:
+# In[8]:
 
 
 covid['date'] = pd.to_datetime(covid['date'], format='%Y%m%d')
@@ -196,10 +197,11 @@ months = covid['month'].unique().tolist()
 months.reverse()
 
 
-# In[ ]:
+# In[9]:
 
 
 df = covid[['date','state','positiveIncrease','hospitalizedIncrease','deathIncrease','death']]
+del covid
 df.drop(df[(df['state'] != "MN") & (df['state'] != "WI") & (df['state'] != "SD") & (df['state'] != "ND") & (df['state'] != "IA")].index, inplace = True)  # Keep only MN
 
 df['new_cases'] = df.groupby('state')['positiveIncrease'].rolling(7).mean().fillna(0).reset_index(0,drop=True)
@@ -216,13 +218,13 @@ df2.state = 'All States'
 df = df.append(df2, ignore_index=True)
 
 
-# In[ ]:
+# In[10]:
 
 
 app = dash.Dash()
 server = app.server
 
-header = html.H1(children="MINNESOTA COVID-19 TRENDS <br>(as of " + today + ")")
+header = html.H1(children="MINNESOTA COVID-19 TRENDS (as of " + today + ")")
 
 markdown_text = 'The following graphs depict Minnesota and Midwest Covid-19 trends. The graphs are interactive; e.g., hover your cursor over a data-series to observe specific values.'
 markdown = dcc.Markdown(children=markdown_text)
@@ -292,7 +294,7 @@ layout = html.Div(children=[header, markdown, subheader1, markdown1, row0, subhe
 app.layout = layout
 
 
-# In[ ]:
+# In[11]:
 
 
 #===========================================
@@ -388,7 +390,7 @@ def update_figure(state_values,normalization_values,month_values):
     return fig
 
 
-# In[ ]:
+# In[12]:
 
 
 #===========================================
@@ -483,7 +485,7 @@ def update_figure(state_values,normalization_values,month_values):
     return fig
 
 
-# In[ ]:
+# In[13]:
 
 
 #===========================================
@@ -578,7 +580,7 @@ def update_figure(state_values,normalization_values,month_values):
     return fig
 
 
-# In[ ]:
+# In[14]:
 
 
 #===========================================
@@ -673,7 +675,7 @@ def update_figure(state_values,normalization_values,month_values):
     return fig
 
 
-# In[ ]:
+# In[15]:
 
 
 if __name__ == '__main__':
