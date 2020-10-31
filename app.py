@@ -222,7 +222,7 @@ df = df.append(df2, ignore_index=True)
 app = dash.Dash()
 server = app.server
 
-header = html.H1(children="MINNESOTA COVID-19 TRENDS <br>(as of " + today + ")")
+header = html.H1(children="MINNESOTA COVID-19 TRENDS (as of " + today + ")")
 
 markdown_text = 'The following graphs depict Minnesota and Midwest Covid-19 trends. The graphs are interactive; e.g., hover your cursor over a data-series to observe specific values.'
 markdown = dcc.Markdown(children=markdown_text)
