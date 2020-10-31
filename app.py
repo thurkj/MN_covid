@@ -269,7 +269,7 @@ dropdown2 =  html.P([
             dcc.Dropdown(
             id='normalization-dropdown',
              options=[
-            {'label': 'Raw', 'value': 'Yes'},
+            {'label': 'Raw Data', 'value': 'Yes'},
             {'label': 'Per 10,000 Residents', 'value': 'No'},
             ],
             value='Yes',
