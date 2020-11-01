@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[7]:
 
 
 # Load necessary packages
@@ -21,7 +21,7 @@ import dash_html_components as html
 from dash.dependencies import Input, Output
 
 
-# In[2]:
+# In[8]:
 
 
 url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/'
@@ -46,7 +46,7 @@ while start_date <= end_date:
     start_date += delta
 
 
-# In[3]:
+# In[9]:
 
 
 # Merge in county-level population.
@@ -54,7 +54,7 @@ pop = pd.read_excel('county_population.xlsx')
 dataset = dataset.merge(pop,on='FIPS',how='outer')
 
 
-# In[4]:
+# In[10]:
 
 
 dataset = dataset.sort_values(by=['Admin2','Date'])
@@ -65,7 +65,7 @@ dataset['new_deaths'] = dataset.groupby('Admin2')['Deaths'].diff().fillna(0)
 dataset['new_deaths_rolling'] = dataset.groupby('Admin2')['new_deaths'].rolling(7).mean().reset_index(0,drop=True)
 
 
-# In[5]:
+# In[11]:
 
 
 # MN Dept of Health Statistic
@@ -96,11 +96,10 @@ dataset.loc[(dataset['ratio']>=50), 'schooling'] = 'Elementary & MS/HS distance 
 dataset['text'] = 'County: ' + dataset['Admin2'] + '<br>' +                    'MN Dept of <br>Health Statistic:    '+ dataset['ratio'].astype(float).round(2).astype(str) + '<br>'+                    'Trending:             '+ dataset['trend'] + '<br>'+                    'New Cases / Day: '+ dataset['new_cases_rolling'].astype(float).round(2).astype(str) + '<br>'+                    'Deaths/ Day:         '+ dataset['new_deaths_rolling'].astype(float).round(2).astype(str)
 
 
-# In[6]:
+# In[12]:
 
 
 df = dataset.groupby('Admin2').tail(1) # Keep only the last observation
-del dataset
 
 with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
     counties = json.load(response)
@@ -123,7 +122,7 @@ fig_map = px.choropleth(df, geojson=counties, locations='FIPS', color='schooling
                            projection = "mercator",
                            labels={'schooling':'State Recommendations:'},
                            hover_name = df['text'],
-                           hover_data={'FIPS':False,'schooling':False}
+                           hover_data={'FIPS':False,'schooling':False},
                           )
 
 fig_map.update_geos(fitbounds="locations", visible=False)
@@ -143,10 +142,19 @@ fig_map.update_layout(margin={"r":0,"t":50,"l":0,"b":0},
                             x=0.5, y=1.04,
                             showarrow=False,
                             text ='Source: Minnesota Dept of Health, retrieved ' + today + '. <br> Hover your cursor over a county to observe relevant characteristics.')],
+                      dragmode=False
                       )
 
 
-# In[7]:
+# In[13]:
+
+
+# Remove datasets for memory issues
+del dataset
+del counties
+
+
+# In[ ]:
 
 
 url = 'https://api.census.gov/data/2019/pep/population?get=NAME,POP&for=state:*'
@@ -187,7 +195,7 @@ else:
     print('Server busy')
 
 
-# In[8]:
+# In[ ]:
 
 
 covid['date'] = pd.to_datetime(covid['date'], format='%Y%m%d')
@@ -198,11 +206,13 @@ months = covid['month'].unique().tolist()
 months.reverse()
 
 
-# In[9]:
+# In[ ]:
 
 
 df = covid[['date','state','positiveIncrease','hospitalizedIncrease','deathIncrease','death']]
-del covid
+del covid # Drop for memory issues
+
+# Trime dataframe to states we're interested in
 df.drop(df[(df['state'] != "MN") & (df['state'] != "WI") & (df['state'] != "SD") & (df['state'] != "ND") & (df['state'] != "IA")].index, inplace = True)  # Keep only MN
 
 # Sort
@@ -223,7 +233,7 @@ df2.state = 'All States'
 df = df.append(df2, ignore_index=True)
 
 
-# In[10]:
+# In[ ]:
 
 
 app = dash.Dash()
@@ -299,7 +309,7 @@ layout = html.Div(children=[header, markdown, subheader1, markdown1, row0, subhe
 app.layout = layout
 
 
-# In[11]:
+# In[ ]:
 
 
 #===========================================
@@ -375,10 +385,12 @@ def update_figure(state_values,normalization_values,month_values):
             title="Date",
             zeroline=True,
             showgrid=False,  # Removes X-axis grid lines 
+            fixedrange = True
             ),
         yaxis=dict(
             zeroline=True, 
-            showgrid=False  # Removes Y-axis grid lines
+            showgrid=False,  # Removes Y-axis grid lines
+            fixedrange = True
             ),
         annotations=[  # Source annotation
                         dict(xref='paper',
@@ -394,7 +406,7 @@ def update_figure(state_values,normalization_values,month_values):
     return fig
 
 
-# In[12]:
+# In[ ]:
 
 
 #===========================================
@@ -470,10 +482,12 @@ def update_figure(state_values,normalization_values,month_values):
             title="Date",
             zeroline=True,
             showgrid=False,  # Removes X-axis grid lines 
+            fixedrange = True
             ),
         yaxis=dict(
             zeroline=True, 
-            showgrid=False  # Removes Y-axis grid lines
+            showgrid=False,  # Removes Y-axis grid lines
+            fixedrange = True
             ),
         annotations=[  # Source annotation
                         dict(xref='paper',
@@ -481,7 +495,7 @@ def update_figure(state_values,normalization_values,month_values):
                             x=0.5, y=1.1,
                             showarrow=False,
                             text ='Source: The Atlantic Covid-19 Tracking Project')
-                    ]
+                    ],
     )
         
     fig.update_xaxes(showline=True, linewidth=2, linecolor='black')
@@ -489,7 +503,7 @@ def update_figure(state_values,normalization_values,month_values):
     return fig
 
 
-# In[13]:
+# In[ ]:
 
 
 #===========================================
@@ -565,10 +579,12 @@ def update_figure(state_values,normalization_values,month_values):
             title="Date",
             zeroline=True,
             showgrid=False,  # Removes X-axis grid lines 
+            fixedrange = True
             ),
         yaxis=dict(
             zeroline=True, 
-            showgrid=False  # Removes Y-axis grid lines
+            showgrid=False,  # Removes Y-axis grid lines
+            fixedrange = True
             ),
         annotations=[  # Source annotation
                         dict(xref='paper',
@@ -584,7 +600,7 @@ def update_figure(state_values,normalization_values,month_values):
     return fig
 
 
-# In[14]:
+# In[ ]:
 
 
 #===========================================
@@ -660,10 +676,12 @@ def update_figure(state_values,normalization_values,month_values):
             title="Date",
             zeroline=True,
             showgrid=False,  # Removes X-axis grid lines 
+            fixedrange = True
             ),
         yaxis=dict(
             zeroline=True, 
-            showgrid=False  # Removes Y-axis grid lines
+            showgrid=False,  # Removes Y-axis grid lines
+            fixedrange = True
             ),
         annotations=[  # Source annotation
                         dict(xref='paper',
@@ -679,10 +697,10 @@ def update_figure(state_values,normalization_values,month_values):
     return fig
 
 
-# In[15]:
+# In[ ]:
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True, use_reloader=False)  # Turn off reloader if inside Jupyter
-    #app.run_server(debug=True)
+    #app.run_server(debug=True, use_reloader=False)  # Turn off reloader if inside Jupyter
+    app.run_server(debug=True)
 
