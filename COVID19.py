@@ -26,7 +26,7 @@ from dash.dependencies import Input, Output
 
 # Initialize Dash
 app = dash.Dash()
-app.title = 'Covid-19 Midwestern Trends'
+app.title = 'Covid-19 Trends'
 server = app.server
 
 
@@ -282,7 +282,7 @@ df = covid[['date','state','positiveIncrease','hospitalizedIncrease','deathIncre
 del covid # Drop for memory issues
 
 # Trime dataframe to states we're interested in
-df.drop(df[(df['state'] != "MN") & (df['state'] != "WI") & (df['state'] != "SD") & (df['state'] != "ND") & (df['state'] != "IA")].index, inplace = True)  # Keep only MN
+#df.drop(df[(df['state'] != "MN") & (df['state'] != "WI") & (df['state'] != "SD") & (df['state'] != "ND") & (df['state'] != "IA")].index, inplace = True)  # Keep only MN
 
 # Sort
 df = df.sort_values(by=['state','date'])
@@ -308,13 +308,13 @@ df = df.append(df2, ignore_index=True)
 #---------------------------------------------------------------------------
 # DASH App formating
 #---------------------------------------------------------------------------
-header = html.H1(children="MINNESOTA COVID-19 TRENDS (as of " + today + ")")
+header = html.H1(children="COVID-19 TRENDS (as of " + today + ")")
 
 markdown = dcc.Markdown(
 f"""
 -----
 
-#### The following graphs depict Minnesota and Midwest Covid-19 trends. The graphs are interactive; e.g., hover your cursor over a data-series to observe specific values.
+#### The following graphs depict Covid-19 trends. The graphs are interactive; e.g., hover your cursor over a data-series to observe specific values.
 
 -----
 """    
@@ -324,7 +324,7 @@ subheader1 = html.H1(children="1. Minnesota School Guidance")
 markdown_text = 'The following figure presents county-level COVID-19 case rates organized by MN Dept of Health School guidelines.' +' Source: Minnesota Dept of Health, retrieved ' + today + '.' +' The left panel presents current variation in COVID-19 Case Rates.' +' Hover your cursor over a county to observe relevant characteristics.' +' The right panel presents the evolution of COVID-19 Case Rates by County.' +' Select which counties to analyze using the pull-down menu or by entering in the county name.',
 markdown1 = dcc.Markdown(children=markdown_text)
 
-markdown_text = 'The following graphs compare COVID-19 statistics across midwest states. You can sharpen the analysis by choosing a subset of states, periods, and/or standardize the statistics by population.'
+markdown_text = 'The following graphs compare COVID-19 statistics. Select midwestern states are selected by defaulyt but you can modify the analysis by choosing a different subset of states, periods, and/or standardize the statistics by population.'
 markdown2 = dcc.Markdown(children=markdown_text)
 
 subheader2 = html.H1(children="2. Midwest COVID-19 Trends")
@@ -349,6 +349,7 @@ dropdown1 =  html.P([
             id='state-dropdown',
             options=[{'label': i, 'value': i} for i in df['state'].unique().tolist()],
             multi=True,
+            value=['MN','WI','IA','ND','SD'],
             searchable= True)
             ], style = {'width' : '40%',
                         'fontSize' : '20px',
