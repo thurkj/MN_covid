@@ -324,10 +324,10 @@ subheader1 = html.H1(children="1. Minnesota School Guidance")
 markdown_text = 'The following figure presents county-level COVID-19 case rates organized by MN Dept of Health School guidelines.' +' Source: Minnesota Dept of Health, retrieved ' + today + '.' +' The left panel presents current variation in COVID-19 Case Rates.' +' Hover your cursor over a county to observe relevant characteristics.' +' The right panel presents the evolution of COVID-19 Case Rates by County.' +' Select which counties to analyze using the pull-down menu or by entering in the county name.',
 markdown1 = dcc.Markdown(children=markdown_text)
 
-markdown_text = 'The following graphs compare COVID-19 statistics. Select midwestern states are selected by defaulyt but you can modify the analysis by choosing a different subset of states, periods, and/or standardize the statistics by population.'
+markdown_text = 'The following graphs compare COVID-19 statistics. Mid-western states are selected by default but you can modify the analysis by choosing a different subset of states, periods, and/or standardize the statistics by population.'
 markdown2 = dcc.Markdown(children=markdown_text)
 
-subheader2 = html.H1(children="2. Midwest COVID-19 Trends")
+subheader2 = html.H1(children="2. State COVID-19 Trends")
 
 # County Dropdown
 dropdown0 =  html.P([
