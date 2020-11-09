@@ -24,11 +24,20 @@ from dash.dependencies import Input, Output
 # In[2]:
 
 
+# Initialize Dash
+app = dash.Dash()
+app.title = 'Covid-19 Midwestern Trends'
+server = app.server
+
+
+# In[3]:
+
+
 url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/'
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
 end_date = dt.date.today()
-start_date = end_date - dt.timedelta(days=23)  # Only need 21 days but plugging in a little wiggle room in the event data are not available
+start_date = end_date - dt.timedelta(days=30)  # Only need 28 days but plugging in a little wiggle room in the event data are not available
 delta = dt.timedelta(days=1)
 
 dataset = pd.DataFrame() # Initialize datframe
@@ -46,7 +55,7 @@ while start_date <= end_date:
     start_date += delta
 
 
-# In[3]:
+# In[4]:
 
 
 # Merge in county-level population.
@@ -54,10 +63,11 @@ pop = pd.read_excel('county_population.xlsx')
 dataset = dataset.merge(pop,on='FIPS',how='outer')
 
 
-# In[4]:
+# In[5]:
 
 
-dataset = dataset.sort_values(by=['Admin2','Date'])
+dataset.drop(dataset[dataset['Admin2'] == 'Unassigned'].index, inplace=True)   # drop values not assigned to a county
+dataset = dataset.sort_values(by=['Admin2','Date'])   # Sort data
 dataset.reset_index(inplace=True)
 dataset['new_cases'] = dataset.groupby('Admin2')['Confirmed'].diff().fillna(0)
 dataset['new_cases_rolling'] = dataset.groupby('Admin2')['new_cases'].rolling(7).mean().fillna(0).reset_index(0,drop=True)
@@ -65,7 +75,7 @@ dataset['new_deaths'] = dataset.groupby('Admin2')['Deaths'].diff().fillna(0)
 dataset['new_deaths_rolling'] = dataset.groupby('Admin2')['new_deaths'].rolling(7).mean().reset_index(0,drop=True)
 
 
-# In[5]:
+# In[6]:
 
 
 # MN Dept of Health Statistic
@@ -88,16 +98,16 @@ dataset.loc[(dataset['new_cases_MNDH']>dataset['new_cases_MNDH_previous']), 'tre
 # Elementary hybrid, Middle/high school distance 30 to less than 50
 # Both distance 50 or more
 dataset['schooling'] = 'Elementary & MS/HS in-person (x<10)'
-dataset.loc[(dataset['ratio']>=10) & (dataset['ratio']<20), 'schooling'] = 'Elementary in-person, MS/HS hybrid (10<x<20)'
-dataset.loc[(dataset['ratio']>=20) & (dataset['ratio']<30), 'schooling'] = 'Elementary & MS/HS hybrid (20<x<30)'
-dataset.loc[(dataset['ratio']>=30) & (dataset['ratio']<50), 'schooling'] = 'Elementary hybrid, MS/HS distance (30<x<50)'
-dataset.loc[(dataset['ratio']>=50) & (dataset['ratio']<100), 'schooling'] = 'Elementary & MS/HS distance (50<x<100)'
-dataset.loc[dataset['ratio']>=100, 'schooling'] = 'WTF?! Are you even listening? (x>100)'
+dataset.loc[(dataset['ratio']>=10) & (dataset['ratio']<20), 'schooling'] = 'Elementary in-person, MS/HS hybrid'
+dataset.loc[(dataset['ratio']>=20) & (dataset['ratio']<30), 'schooling'] = 'Elementary & MS/HS hybrid'
+dataset.loc[(dataset['ratio']>=30) & (dataset['ratio']<50), 'schooling'] = 'Elementary hybrid, MS/HS distance'
+dataset.loc[(dataset['ratio']>=50) & (dataset['ratio']<100), 'schooling'] = 'Elementary & MS/HS distance'
+dataset.loc[dataset['ratio']>=100, 'schooling'] = 'WTF! Are you even listening?'
 
 dataset['text'] = 'County: ' + dataset['Admin2'] + '<br>' +                    'MN Dept of <br>Health Statistic:    '+ dataset['ratio'].astype(float).round(2).astype(str) + '<br>'+                    'Trending:             '+ dataset['trend'] + '<br>'+                    'New Cases / Day: '+ dataset['new_cases_rolling'].astype(float).round(2).astype(str) + '<br>'+                    'Deaths/ Day:         '+ dataset['new_deaths_rolling'].astype(float).round(2).astype(str)
 
 
-# In[6]:
+# In[7]:
 
 
 df = dataset.groupby('Admin2').tail(1) # Keep only the last observation
@@ -107,56 +117,116 @@ with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-c
     
 fig_map = px.choropleth(df, geojson=counties, locations='FIPS', color='schooling',
                            color_discrete_map={
-                            'Elementary & MS/HS in-person (x<10)':'green',
-                            'Elementary in-person, MS/HS hybrid (10<x<20)':'tan',
-                            'Elementary & MS/HS hybrid (20<x<30)':'yellow',
-                            'Elementary hybrid, MS/HS distance (30<x<50)':'orange',
-                            'Elementary & MS/HS distance (50<x<100)':'red',
-                            'WTF?! Are you even listening? (x>100)':'black'},
+                            'Elementary & MS/HS in-person':'green',
+                            'Elementary in-person, MS/HS hybrid':'tan',
+                            'Elementary & MS/HS hybrid':'yellow',
+                            'Elementary hybrid, MS/HS distance':'orange',
+                            'Elementary & MS/HS distance':'red',
+                            'WTF! Are you even listening?':'black'},
                            category_orders = {
-                            'schooling':['Elementary & MS/HS in-person (x<10)',
-                            'Elementary in-person, MS/HS hybrid (10<x<20)',
-                            'Elementary & MS/HS hybrid (20<x<30)',
-                            'Elementary hybrid, MS/HS distance (30<x<50)',
-                            'Elementary & MS/HS distance (50<x<100)',
-                            'WTF?! Are you even listening? (x>100)'
+                            'schooling':['Elementary & MS/HS in-person',
+                            'Elementary in-person, MS/HS hybrid',
+                            'Elementary & MS/HS hybrid',
+                            'Elementary hybrid, MS/HS distance',
+                            'Elementary & MS/HS distance',
+                            'WTF! Are you even listening?'
                             ]},
                            projection = "mercator",
-                           labels={'schooling':'State Recommendations:'},
+                           labels={'schooling':'Recommended Education Format:'},
                            hover_name = df['text'],
                            hover_data={'FIPS':False,'schooling':False},
                           )
 
 fig_map.update_geos(fitbounds="locations", visible=False)
-fig_map.update_layout(margin={"r":0,"t":50,"l":0,"b":0}, 
-                      title={
-                        'text': "Minnesota Dept of Health School Guidelines",
-                        'x':0.5,'xanchor': 'center',
-                        'font':{'size': 18}
-                        },
-                      legend={
-                        'x': 0.6, 'y': 0.25
-                        },
-                      width=900,
-                      annotations=[  # Source annotation
-                        dict(xref='paper',
-                            yref='paper',
-                            x=0.5, y=1.04,
-                            showarrow=False,
-                            text ='Source: Minnesota Dept of Health, retrieved ' + today + '. <br> Hover your cursor over a county to observe relevant characteristics.')],
+fig_map.update_layout(legend=dict(
+                        yanchor="top",
+                        y=0.40,
+                        xanchor="left",
+                        x=0.60,
+                        font_size=10
+                      ),
+                      margin={"r":0,"t":0,"l":0,"b":0},
                       dragmode=False
                       )
 
 
-# In[7]:
-
-
-# Remove datasets for memory issues
-del dataset
-del counties
-
-
 # In[8]:
+
+
+#===========================================
+# County 14-day Case Rate
+#===========================================
+
+@app.callback(
+    Output('county_trend', 'figure'),
+    [Input('county-dropdown', 'value')])
+    
+# Update Figure
+def update_county_figure(county_values):
+                
+    if county_values is None:
+        dff = dataset.pivot(index='Date',columns='Admin2',values='ratio')
+        dff = dff[(dff != 0).all(1)]   # Remove early values not included in the statistics
+
+    else:
+        if not isinstance(county_values, list): county_values = [county_values]
+        temp = dataset.loc[dataset['Admin2'].isin(county_values)]
+            
+        dff = temp.pivot(index='Date',columns='Admin2',values='ratio')              
+        dff = dff[(dff != 0).all(1)]   # Remove early values not included in the statistics
+        
+    fig = go.Figure()
+    for column in dff.columns.to_list():
+        fig.add_trace(
+            go.Scatter(
+                x = dff.index,
+                y = dff[column],
+                name = column,
+                mode='lines',
+                opacity=0.8,
+                hovertemplate = '<extra></extra>County: ' + column + '<br>Date: ' + pd.to_datetime(dff.index).strftime('%Y-%m-%d') +'<br>Value: %{y:.1f}'
+            )
+        )
+
+    # Update remaining layout properties
+    fig.update_layout(
+        margin=dict(l=10, r=0, t=0, b=0),
+        title={
+                'text': "14-day COVID-19 Case Count per 10,000 Residents",
+                'x':0.5,'xanchor': 'center',
+                'font':{'size': 18}
+                },
+        hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
+        hoverlabel=dict(
+            bgcolor = 'white',
+            font_size=16),
+        xaxis=dict(
+            zeroline=True,
+            showgrid=False,  # Removes X-axis grid lines 
+            fixedrange = True
+            ),
+        yaxis=dict(
+            title="14-day Case Count per 10k Residents",
+            zeroline=True, 
+            showgrid=False,  # Removes Y-axis grid lines
+            fixedrange = True
+            ),
+        annotations=[  # Source annotation
+                        dict(xref='paper',
+                            yref='paper',
+                            x=0.5, y=1.1,
+                            showarrow=False,
+                            text ='Source: Minnesota Department of Health')
+                    ]
+    )
+
+    fig.update_xaxes(showline=True, linewidth=2, linecolor='black')
+    fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
+
+    return fig
+
+
+# In[9]:
 
 
 url = 'https://api.census.gov/data/2019/pep/population?get=NAME,POP&for=state:*'
@@ -196,10 +266,7 @@ elif response.status_code == 404:
 else: 
     print('Server busy')
 
-
-# In[9]:
-
-
+# Clean-up data
 covid['date'] = pd.to_datetime(covid['date'], format='%Y%m%d')
 covid['month'] = covid['date'].dt.strftime('%B %Y') 
 covid.drop(covid[covid['date'] < '2020-03-01'].index, inplace=True)   # Drop January and February when there are few cases
@@ -238,11 +305,9 @@ df = df.append(df2, ignore_index=True)
 # In[11]:
 
 
-app = dash.Dash()
-app.title = 'Covid-19 Midwestern Trends'
-
-server = app.server
-
+#---------------------------------------------------------------------------
+# DASH App formating
+#---------------------------------------------------------------------------
 header = html.H1(children="MINNESOTA COVID-19 TRENDS (as of " + today + ")")
 
 markdown = dcc.Markdown(
@@ -256,13 +321,26 @@ f"""
 )
 
 subheader1 = html.H1(children="1. Minnesota School Guidance")
-markdown_text = 'The following figure presents county-level COVID-19 case rates organized by MN Dept of Health School guidelines.'
+markdown_text = 'The following figure presents county-level COVID-19 case rates organized by MN Dept of Health School guidelines.' +' Source: Minnesota Dept of Health, retrieved ' + today + '.' +' The left panel presents current variation in COVID-19 Case Rates.' +' Hover your cursor over a county to observe relevant characteristics.' +' The right panel presents the evolution of COVID-19 Case Rates by County.' +' Select which counties to analyze using the pull-down menu or by entering in the county name.',
 markdown1 = dcc.Markdown(children=markdown_text)
 
 markdown_text = 'The following graphs compare COVID-19 statistics across midwest states. You can sharpen the analysis by choosing a subset of states, periods, and/or standardize the statistics by population.'
 markdown2 = dcc.Markdown(children=markdown_text)
 
 subheader2 = html.H1(children="2. Midwest COVID-19 Trends")
+
+# County Dropdown
+dropdown0 =  html.P([
+            html.Label("Select One or More Counties"),
+            dcc.Dropdown(
+            id='county-dropdown',
+            options=[{'label': i, 'value': i} for i in dataset['Admin2'].unique().tolist()],
+            multi=True,
+            searchable= True,
+            value=['Hennepin','Carver'])
+            ], style = {'width' : '90%',
+                        'fontSize' : '20px',
+                        'padding-right' : '0px'})
 
 # Dropdown
 dropdown1 =  html.P([
@@ -306,14 +384,16 @@ dropdown2 =  html.P([
                         'padding-left' : '100px',
                         'display': 'inline-block'})
 
-graph0 = dcc.Graph(id="map", figure = fig_map, style={'display': 'inline-block'})
+state_map = dcc.Graph(id="map", figure = fig_map, style={'margin-left': "0px", 'width': '48%', 'display': 'inline-block'})
+county_trend = dcc.Graph(id="county_trend", style={'display': 'inline-block'})
 graph1 = dcc.Graph(id="positive", style={'display': 'inline-block'})
 graph2 = dcc.Graph(id="curhospital", style={'display': 'inline-block'})
 graph3 = dcc.Graph(id="newdeaths", style={'display': 'inline-block'})
 graph4 = dcc.Graph(id="totdeaths", style={'display': 'inline-block'})
 
 dropdown = html.Div(children=[dropdown1, dropdown2])
-row0 = html.Div(graph0)
+county_trend_fig = html.Div(html.Div([dropdown0, county_trend]), style={'width': '48%', 'display': 'inline-block'})
+row0 = html.Div(children=[state_map, county_trend_fig])
 row1 = html.Div(children=[graph1, graph2])
 row2 = html.Div(children=[graph3, graph4])
 
@@ -709,10 +789,10 @@ def update_figure(state_values,normalization_values,month_values):
     return fig
 
 
-# In[16]:
+# In[ ]:
 
 
 if __name__ == '__main__':
-    #app.run_server(debug=True, use_reloader=False)  # Jupyter
-    app.run_server(debug=True)    # Comment above line and uncomment this line prior to heroku deployment
+    app.run_server(debug=True, use_reloader=False)  # Jupyter
+    #app.run_server(debug=True)    # Comment above line and uncomment this line prior to heroku deployment
 
