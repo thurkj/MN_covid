@@ -198,7 +198,7 @@ state_df.dropna(subset=['state'],inplace=True)
 # Initialize Dash
 #app = dash.Dash(external_stylesheets=[dbc.themes.LUX])
 app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY])
-app.title = 'Covid-19 U.S. Trends'
+app.title = 'Covid-19 U.S. Dashboard'
 server = app.server
 
 
@@ -304,7 +304,6 @@ def update_county_figure(county_values):
         hoverlabel=dict(
             bgcolor = 'white',
             font_size=16),
-        width=700,   
         xaxis=dict(
             zeroline=True,
             showgrid=False,  # Removes X-axis grid lines 
@@ -386,7 +385,6 @@ def update_figure(state_values,month_values):
         hoverlabel=dict(
             bgcolor = 'white',
             font_size=16),
-        width=700,   
         xaxis=dict(
             title="Date",
             zeroline=True,
@@ -467,7 +465,6 @@ def update_figure(state_values,month_values):
         hoverlabel=dict(
             bgcolor = 'white',
             font_size=16),
-        width=700,   
         xaxis=dict(
             title="Date",
             zeroline=True,
@@ -548,7 +545,6 @@ def update_figure(state_values,month_values):
         hoverlabel=dict(
             bgcolor = 'white',
             font_size=16),
-        width=700,  
         xaxis=dict(
             title="Date",
             zeroline=True,
@@ -629,7 +625,6 @@ def update_figure(state_values,month_values):
         hoverlabel=dict(
             bgcolor = 'white',
             font_size=16),
-        width=700,  
         xaxis=dict(
             title="Date",
             zeroline=True,
@@ -709,8 +704,7 @@ def update_figure(state_values,month_values):
         hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
         hoverlabel=dict(
             bgcolor = 'white',
-            font_size=16),
-        width=700,  
+            font_size=16), 
         xaxis=dict(
             title="Date",
             zeroline=True,
@@ -790,8 +784,7 @@ def update_figure(state_values,month_values):
         hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
         hoverlabel=dict(
             bgcolor = 'white',
-            font_size=16),
-        width=700,  
+            font_size=16), 
         xaxis=dict(
             title="Date",
             zeroline=True,
@@ -872,7 +865,7 @@ def update_figure(state_values,month_values):
         hoverlabel=dict(
             bgcolor = 'white',
             font_size=16),
-        width=700,  
+
         xaxis=dict(
             title="Date",
             zeroline=True,
@@ -953,7 +946,7 @@ def update_figure(state_values,month_values):
         hoverlabel=dict(
             bgcolor = 'white',
             font_size=16),
-        width=700,  
+
         xaxis=dict(
             title="Date",
             zeroline=True,
@@ -985,7 +978,7 @@ def update_figure(state_values,month_values):
 
 
 # County Dropdown
-dropdown0 =  html.P([
+county_dropdown =  html.P([
             dcc.Dropdown(
             id='county-dropdown',
             options=[{'label': i, 'value': i} for i in minnesota_data['Admin2'].unique().tolist()],
@@ -997,7 +990,7 @@ dropdown0 =  html.P([
                         'padding-right' : '0px'})
 
 # Dropdown
-dropdown1 =  html.P([
+state_dropdown =  html.P([
             html.Label("Select One or More States"),
             dcc.Dropdown(
             id='state-dropdown',
@@ -1026,7 +1019,32 @@ slider =    html.P([
 
 # ## Define HTML
 
-# In[16]:
+# In[17]:
+
+
+#####################
+# Header and Footer
+#####################
+# https://dash-bootstrap-components.opensource.faculty.ai/docs/components/navbar/
+
+navbar = dbc.NavbarSimple(
+    brand="COVID-19 DASHBOARD: " + today ,
+    brand_href="#",
+    color="dark",
+    fixed="top",
+    dark=True
+    )
+
+navbar_footer = dbc.NavbarSimple(
+    brand="Jeff Thurk // jeffthurk.com // Department of Economics // University of Georgia",
+    color="light",
+    #fixed="bottom",
+    #sticky=True,
+    #dark=True,
+    )
+
+
+# In[18]:
 
 
 #---------------------------------------------------------------------------
@@ -1034,61 +1052,58 @@ slider =    html.P([
 #---------------------------------------------------------------------------
 header = html.H1(children="COVID-19 TRENDS (as of " + today + ")")
 
-markdown = dcc.Markdown(
+desc = dcc.Markdown(
 f"""
------
-
 #### The following graphs depict Covid-19 trends. The graphs are interactive; e.g., hover your cursor over a data-series to observe specific values.
 
 -----
 """    
 )
 
-subheader1 = html.H1(children="1. Minnesota School Guidance")
-markdown_text = 'The following figure presents county-level COVID-19 case rates organized by MN Dept of Health School guidelines.' +' Source: Minnesota Dept of Health, retrieved ' + today + '.' +' The left panel presents current variation in COVID-19 Case Rates.' +' Hover your cursor over a county to observe relevant characteristics.' +' The right panel presents the evolution of COVID-19 Case Rates by County.' +' Select which counties to analyze using the pull-down menu or by entering in the county name.',
-markdown1 = dcc.Markdown(children=markdown_text)
+mn_head = html.H1(children="1. Minnesota School Guidance")
+mn_desc = dcc.Markdown(
+            f"""
+The following figure presents county-level COVID-19 case rates organized by MN Dept of Health School guidelines. 
+Source: Minnesota Dept of Health. The left panel presents current variation in COVID-19 Case Rates. 
+Hover your cursor over a county to observe relevant characteristics. 
+The right panel presents the evolution of COVID-19 Case Rates by County.
+Select which counties to analyze using the pull-down menu or by entering in the county name.
+            """   
+)
 
-markdown_text = 'The following graphs compare COVID-19 statistics. Select midwestern states are included by default but you can modify the analysis by choosing a different subset of states, periods, and/or standardize the statistics by population.'
-markdown2 = dcc.Markdown(children=markdown_text)
-
-subheader2 = html.H1(children="2. State COVID-19 Trends")
-
-# Figures
-#state_map = dcc.Graph(id="map", figure = fig_map, style={'margin-left': "0px", 'display': 'inline-block'})
-#county_trend = dcc.Graph(id="county_trend", style={'display': 'inline-block'})
-#graph1 = dcc.Graph(id="positive", style={'display': 'inline-block'})
-#graph2 = dcc.Graph(id="curhospital", style={'display': 'inline-block'})
-#graph3 = dcc.Graph(id="newdeaths", style={'display': 'inline-block'})
-#graph4 = dcc.Graph(id="totdeaths", style={'display': 'inline-block'})
-
-dropdown = html.Div(children=[dropdown1])
-#county_trend_fig = html.Div(html.Div([dropdown0, county_trend]), style={'display': 'inline-block'})
-#row0 = html.Div(children=[state_map, county_trend_fig])
-#row1 = html.Div(children=[graph1, graph2])
-#row2 = html.Div(children=[graph3, graph4])
+state_head = html.H1(children="2. State COVID-19 Trends")
+state_desc = dcc.Markdown(
+            f"""
+The following graphs compare COVID-19 statistics. 
+Select midwestern states are included by default but you can modify the analysis by choosing a different subset of
+states, periods, and/or standardize the statistics by population.
+            """   
+)
 
 # App Layout
 app.layout = dbc.Container(fluid=True, children=[
     ## Top
-    header, markdown, subheader1, markdown1, 
+    navbar, 
+    html.Br(),html.Br(),html.Br(),html.Br(),
+    desc, mn_head, mn_desc, 
     html.Br(),html.Br(),html.Br(),
     ## Body: MN Counties
     dbc.Row([
         ### plots
         dbc.Col(width=6, children=[
             dbc.Col(html.H4("MN County 14-Day Case Rates")), 
-            dcc.Graph(id="map", figure = fig_map, style={'margin-left': '-200px'})
+            dcc.Graph(id="map", figure = fig_map, style={'margin-left': '-100px'})
             ]),
         dbc.Col(width=6, children=[
             dbc.Col(html.H4("County-level 14-Day Case Rate Trends")), 
-            dropdown0, 
+            county_dropdown, 
             dcc.Graph(id="county_trend")
             ]),
         ]),
     html.Br(),html.Br(),html.Br(),
     dbc.Row([
         dbc.Col(width=12, children=[
-        subheader2, markdown2, dropdown, slider
+        state_head, state_desc, state_dropdown, slider
         ]),
         html.Br(),
         
@@ -1115,13 +1130,14 @@ app.layout = dbc.Container(fluid=True, children=[
                 dbc.Tab(dcc.Graph(id="totdeaths_pc"), label="Per 10,000")
             ]),
         ]),
-    ], no_gutters=True)
+    ], no_gutters=True),
+    navbar_footer
 ])
 
 
 # # 3. Run Application
 
-# In[17]:
+# In[19]:
 
 
 if __name__ == '__main__':
