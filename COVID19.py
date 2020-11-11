@@ -1077,6 +1077,7 @@ app.layout = dbc.Container(fluid=True, children=[
                 dbc.Tab(dcc.Graph(id="positive_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="positive_pc"), label="Per 10,000")
             ]),
+            html.Br(),html.Br(),
             dbc.Col(html.H4("New Deaths (7-day Moving Average)")),
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="newdeaths_raw"), label="Raw Data"),
@@ -1091,6 +1092,7 @@ app.layout = dbc.Container(fluid=True, children=[
                 dbc.Tab(dcc.Graph(id="curhospital_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="curhospital_pc"), label="Per 10,000")
             ]),
+            html.Br(),html.Br(),
             dbc.Col(html.H4("Total Deaths")),
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="totdeaths_raw"), label="Raw Data"),
