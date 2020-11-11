@@ -377,7 +377,6 @@ def update_figure(state_values,month_values):
             bgcolor = 'white',
             font_size=16),
         xaxis=dict(
-            title="Date",
             zeroline=True,
             showgrid=False,  # Removes X-axis grid lines 
             fixedrange = True
@@ -453,7 +452,6 @@ def update_figure(state_values,month_values):
             bgcolor = 'white',
             font_size=16),
         xaxis=dict(
-            title="Date",
             zeroline=True,
             showgrid=False,  # Removes X-axis grid lines 
             fixedrange = True
@@ -529,7 +527,6 @@ def update_figure(state_values,month_values):
             bgcolor = 'white',
             font_size=16),
         xaxis=dict(
-            title="Date",
             zeroline=True,
             showgrid=False,  # Removes X-axis grid lines 
             fixedrange = True
@@ -605,7 +602,6 @@ def update_figure(state_values,month_values):
             bgcolor = 'white',
             font_size=16),
         xaxis=dict(
-            title="Date",
             zeroline=True,
             showgrid=False,  # Removes X-axis grid lines 
             fixedrange = True
@@ -681,7 +677,6 @@ def update_figure(state_values,month_values):
             bgcolor = 'white',
             font_size=16), 
         xaxis=dict(
-            title="Date",
             zeroline=True,
             showgrid=False,  # Removes X-axis grid lines 
             fixedrange = True
@@ -757,7 +752,6 @@ def update_figure(state_values,month_values):
             bgcolor = 'white',
             font_size=16), 
         xaxis=dict(
-            title="Date",
             zeroline=True,
             showgrid=False,  # Removes X-axis grid lines 
             fixedrange = True
@@ -834,7 +828,6 @@ def update_figure(state_values,month_values):
             font_size=16),
 
         xaxis=dict(
-            title="Date",
             zeroline=True,
             showgrid=False,  # Removes X-axis grid lines 
             fixedrange = True
@@ -911,7 +904,6 @@ def update_figure(state_values,month_values):
             font_size=16),
 
         xaxis=dict(
-            title="Date",
             zeroline=True,
             showgrid=False,  # Removes X-axis grid lines 
             fixedrange = True
