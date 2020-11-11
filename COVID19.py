@@ -36,7 +36,7 @@ url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_cov
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
 end_date = dt.date.today()
-start_date = end_date - dt.timedelta(days=30)  # Only need 28 days but plugging in a little wiggle room in the event data are not available
+start_date = end_date - dt.timedelta(days=44) # Collect 44 days of data => 30 days with a 14-day window
 delta = dt.timedelta(days=1)
 
 minnesota_data = pd.DataFrame() # Initialize datframe
@@ -50,7 +50,7 @@ while start_date <= end_date:
         df['Date'] = start_date
         minnesota_data = minnesota_data.append(df, ignore_index=True)
         as_of = start_date
-        
+        del df  # erase df from memory
     start_date += delta
 
 
@@ -94,15 +94,15 @@ minnesota_data.loc[(minnesota_data['new_cases_MNDH']>minnesota_data['new_cases_M
 
 # MN Dept of Health School Guidelines 
 # In-person learning for all students 0 to less than 10
-# Elementary in-person, Middle/high school hybrid 10 to less than 20
+# Elem. in-person, Middle/high school hybrid 10 to less than 20
 # Both hybrid 20 to less than 30
-# Elementary hybrid, Middle/high school distance 30 to less than 50
+# Elem. hybrid, Middle/high school distance 30 to less than 50
 # Both distance 50 or more
-minnesota_data['schooling'] = 'Elementary & MS/HS in-person (x<10)'
-minnesota_data.loc[(minnesota_data['ratio']>=10) & (minnesota_data['ratio']<20), 'schooling'] = 'Elementary in-person, MS/HS hybrid'
-minnesota_data.loc[(minnesota_data['ratio']>=20) & (minnesota_data['ratio']<30), 'schooling'] = 'Elementary & MS/HS hybrid'
-minnesota_data.loc[(minnesota_data['ratio']>=30) & (minnesota_data['ratio']<50), 'schooling'] = 'Elementary hybrid, MS/HS distance'
-minnesota_data.loc[(minnesota_data['ratio']>=50) & (minnesota_data['ratio']<100), 'schooling'] = 'Elementary & MS/HS distance'
+minnesota_data['schooling'] = 'Elem. & MS/HS in-person (x<10)'
+minnesota_data.loc[(minnesota_data['ratio']>=10) & (minnesota_data['ratio']<20), 'schooling'] = 'Elem. in-person, MS/HS hybrid'
+minnesota_data.loc[(minnesota_data['ratio']>=20) & (minnesota_data['ratio']<30), 'schooling'] = 'Elem. & MS/HS hybrid'
+minnesota_data.loc[(minnesota_data['ratio']>=30) & (minnesota_data['ratio']<50), 'schooling'] = 'Elem. hybrid, MS/HS distance'
+minnesota_data.loc[(minnesota_data['ratio']>=50) & (minnesota_data['ratio']<100), 'schooling'] = 'Elem. & MS/HS distance'
 minnesota_data.loc[minnesota_data['ratio']>=100, 'schooling'] = 'WTF! Are you even listening?'
 
 minnesota_data['text'] = 'County: ' + minnesota_data['Admin2'] + '<br>' +                    'MN Dept of <br>Health Statistic:    '+ minnesota_data['ratio'].astype(float).round(2).astype(str) + '<br>'+                    'Trending:             '+ minnesota_data['trend'] + '<br>'+                    'New Cases / Day: '+ minnesota_data['new_cases_rolling'].astype(float).round(2).astype(str) + '<br>'+                    'Deaths/ Day:         '+ minnesota_data['new_deaths_rolling'].astype(float).round(2).astype(str)
@@ -219,22 +219,22 @@ with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-c
     
 fig_map = px.choropleth(minnesota_data_today, geojson=counties, locations='FIPS', color='schooling',
                            color_discrete_map={
-                            'Elementary & MS/HS in-person':'green',
-                            'Elementary in-person, MS/HS hybrid':'tan',
-                            'Elementary & MS/HS hybrid':'yellow',
-                            'Elementary hybrid, MS/HS distance':'orange',
-                            'Elementary & MS/HS distance':'red',
+                            'Elem. & MS/HS in-person':'green',
+                            'Elem. in-person, MS/HS hybrid':'tan',
+                            'Elem. & MS/HS hybrid':'yellow',
+                            'Elem. hybrid, MS/HS distance':'orange',
+                            'Elem. & MS/HS distance':'red',
                             'WTF! Are you even listening?':'black'},
                            category_orders = {
-                            'schooling':['Elementary & MS/HS in-person',
-                            'Elementary in-person, MS/HS hybrid',
-                            'Elementary & MS/HS hybrid',
-                            'Elementary hybrid, MS/HS distance',
-                            'Elementary & MS/HS distance',
+                            'schooling':['Elem. & MS/HS in-person',
+                            'Elem. in-person, MS/HS hybrid',
+                            'Elem. & MS/HS hybrid',
+                            'Elem. hybrid, MS/HS distance',
+                            'Elem. & MS/HS distance',
                             'WTF! Are you even listening?'
                             ]},
                            projection = "mercator",
-                           labels={'schooling':'Recommended Education Format:'},
+                           labels={'schooling':'Recommended Format:'},
                            hover_name = minnesota_data_today['text'],
                            hover_data={'FIPS':False,'schooling':False},
                           )
@@ -294,12 +294,7 @@ def update_county_figure(county_values):
 
     # Update remaining layout properties
     fig.update_layout(
-        margin=dict(l=10, r=0, t=0, b=0),
-        title={
-                'text': "14-day COVID-19 Case Count per 10,000 Residents",
-                'x':0.5,'xanchor': 'center',
-                'font':{'size': 18}
-                },
+        margin=dict(l=0, r=0, t=10, b=0),
         hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
         hoverlabel=dict(
             bgcolor = 'white',
@@ -318,7 +313,7 @@ def update_county_figure(county_values):
         annotations=[  # Source annotation
                         dict(xref='paper',
                             yref='paper',
-                            x=0.5, y=1.1,
+                            x=0.5, y=1.0,
                             showarrow=False,
                             text ='Source: Minnesota Department of Health')
                     ]
@@ -376,11 +371,7 @@ def update_figure(state_values,month_values):
       
     # Update remaining layout properties
     fig.update_layout(
-        title={
-                'text': "New Daily Cases (7-day Moving Average)",
-                'x':0.5,'xanchor': 'center',
-                'font':{'size': 18}
-                },
+        margin={"r":0,"t":10,"l":0,"b":0},
         hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
         hoverlabel=dict(
             bgcolor = 'white',
@@ -399,7 +390,7 @@ def update_figure(state_values,month_values):
         annotations=[  # Source annotation
                         dict(xref='paper',
                             yref='paper',
-                            x=0.5, y=1.1,
+                            x=0.5, y=1.0,
                             showarrow=False,
                             text ='Source: The Atlantic Covid-19 Tracking Project')
                     ]
@@ -456,11 +447,7 @@ def update_figure(state_values,month_values):
       
     # Update remaining layout properties
     fig.update_layout(
-        title={
-                'text': "New Daily Cases (7-day Moving Average)",
-                'x':0.5,'xanchor': 'center',
-                'font':{'size': 18}
-                },
+        margin={"r":0,"t":10,"l":0,"b":0},
         hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
         hoverlabel=dict(
             bgcolor = 'white',
@@ -479,7 +466,7 @@ def update_figure(state_values,month_values):
         annotations=[  # Source annotation
                         dict(xref='paper',
                             yref='paper',
-                            x=0.5, y=1.1,
+                            x=0.5, y=1.0,
                             showarrow=False,
                             text ='Source: The Atlantic Covid-19 Tracking Project')
                     ]
@@ -536,11 +523,7 @@ def update_figure(state_values,month_values):
       
     # Update remaining layout properties
     fig.update_layout(
-        title={
-                'text': "New Daily Hospitalizations (7-day Moving Average)",
-                'x':0.5,'xanchor': 'center',
-                'font':{'size': 18}
-                },
+        margin={"r":0,"t":10,"l":0,"b":0},
         hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
         hoverlabel=dict(
             bgcolor = 'white',
@@ -559,7 +542,7 @@ def update_figure(state_values,month_values):
         annotations=[  # Source annotation
                         dict(xref='paper',
                             yref='paper',
-                            x=0.5, y=1.1,
+                            x=0.5, y=1.0,
                             showarrow=False,
                             text ='Source: The Atlantic Covid-19 Tracking Project')
                     ],
@@ -616,11 +599,7 @@ def update_figure(state_values,month_values):
       
     # Update remaining layout properties
     fig.update_layout(
-        title={
-                'text': "New Daily Hospitalizations (7-day Moving Average)",
-                'x':0.5,'xanchor': 'center',
-                'font':{'size': 18}
-                },
+        margin={"r":0,"t":10,"l":0,"b":0},
         hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
         hoverlabel=dict(
             bgcolor = 'white',
@@ -639,7 +618,7 @@ def update_figure(state_values,month_values):
         annotations=[  # Source annotation
                         dict(xref='paper',
                             yref='paper',
-                            x=0.5, y=1.1,
+                            x=0.5, y=1.0,
                             showarrow=False,
                             text ='Source: The Atlantic Covid-19 Tracking Project')
                     ],
@@ -696,11 +675,7 @@ def update_figure(state_values,month_values):
       
     # Update remaining layout properties
     fig.update_layout(
-        title={
-                'text': "Daily Deaths (7-day Moving Average)",
-                'x':0.5,'xanchor': 'center',
-                'font':{'size': 18}
-                },
+        margin={"r":0,"t":10,"l":0,"b":0},
         hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
         hoverlabel=dict(
             bgcolor = 'white',
@@ -719,7 +694,7 @@ def update_figure(state_values,month_values):
         annotations=[  # Source annotation
                         dict(xref='paper',
                             yref='paper',
-                            x=0.5, y=1.1,
+                            x=0.5, y=1.0,
                             showarrow=False,
                             text ='Source: The Atlantic Covid-19 Tracking Project')
                     ]
@@ -776,11 +751,7 @@ def update_figure(state_values,month_values):
       
     # Update remaining layout properties
     fig.update_layout(
-        title={
-                'text': "Daily Deaths (7-day Moving Average)",
-                'x':0.5,'xanchor': 'center',
-                'font':{'size': 18}
-                },
+        margin={"r":0,"t":10,"l":0,"b":0},
         hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
         hoverlabel=dict(
             bgcolor = 'white',
@@ -799,7 +770,7 @@ def update_figure(state_values,month_values):
         annotations=[  # Source annotation
                         dict(xref='paper',
                             yref='paper',
-                            x=0.5, y=1.1,
+                            x=0.5, y=1.0,
                             showarrow=False,
                             text ='Source: The Atlantic Covid-19 Tracking Project')
                     ]
@@ -856,11 +827,7 @@ def update_figure(state_values,month_values):
       
     # Update remaining layout properties
     fig.update_layout(
-        title={
-                'text': "Total Deaths (Cumulative)",
-                'x':0.5,'xanchor': 'center',
-                'font':{'size': 18}
-                },
+        margin={"r":0,"t":10,"l":0,"b":0},
         hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
         hoverlabel=dict(
             bgcolor = 'white',
@@ -880,7 +847,7 @@ def update_figure(state_values,month_values):
         annotations=[  # Source annotation
                         dict(xref='paper',
                             yref='paper',
-                            x=0.5, y=1.1,
+                            x=0.5, y=1.0,
                             showarrow=False,
                             text ='Source: The Atlantic Covid-19 Tracking Project')
                     ]
@@ -937,11 +904,7 @@ def update_figure(state_values,month_values):
       
     # Update remaining layout properties
     fig.update_layout(
-        title={
-                'text': "Total Deaths (Cumulative)",
-                'x':0.5,'xanchor': 'center',
-                'font':{'size': 18}
-                },
+        margin={"r":0,"t":10,"l":0,"b":0},
         hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
         hoverlabel=dict(
             bgcolor = 'white',
@@ -961,7 +924,7 @@ def update_figure(state_values,month_values):
         annotations=[  # Source annotation
                         dict(xref='paper',
                             yref='paper',
-                            x=0.5, y=1.1,
+                            x=0.5, y=1.0,
                             showarrow=False,
                             text ='Source: The Atlantic Covid-19 Tracking Project')
                     ]
@@ -1019,7 +982,7 @@ slider =    html.P([
 
 # ## Define HTML
 
-# In[17]:
+# In[16]:
 
 
 #####################
@@ -1044,7 +1007,7 @@ navbar_footer = dbc.NavbarSimple(
     )
 
 
-# In[18]:
+# In[17]:
 
 
 #---------------------------------------------------------------------------
@@ -1091,7 +1054,7 @@ app.layout = dbc.Container(fluid=True, children=[
     dbc.Row([
         ### plots
         dbc.Col(width=6, children=[
-            dbc.Col(html.H4("MN County 14-Day Case Rates")), 
+            dbc.Col(html.H4("Current County 14-Day Case Rate")), 
             dcc.Graph(id="map", figure = fig_map, style={'margin-left': '-100px'})
             ]),
         dbc.Col(width=6, children=[
@@ -1103,16 +1066,18 @@ app.layout = dbc.Container(fluid=True, children=[
     html.Br(),html.Br(),html.Br(),
     dbc.Row([
         dbc.Col(width=12, children=[
-        state_head, state_desc, state_dropdown, slider
+        state_head, state_desc, state_dropdown, slider,
+        html.Br(),html.Br()
         ]),
-        html.Br(),
         
         ### left plots
-        dbc.Col(width=6, children=[            
+        dbc.Col(width=6, children=[   
+            dbc.Col(html.H4("New Cases (7-day Moving Average)")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="positive_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="positive_pc"), label="Per 10,000")
             ]),
+            dbc.Col(html.H4("New Deaths (7-day Moving Average)")),
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="newdeaths_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="newdeaths_pc"), label="Per 10,000")
@@ -1121,23 +1086,26 @@ app.layout = dbc.Container(fluid=True, children=[
                 
         ### right plots
         dbc.Col(width=6, children=[            
+            dbc.Col(html.H4("New Hospitalizations (7-day Moving Average)")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="curhospital_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="curhospital_pc"), label="Per 10,000")
             ]),
+            dbc.Col(html.H4("Total Deaths")),
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="totdeaths_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="totdeaths_pc"), label="Per 10,000")
             ]),
         ]),
-    ], no_gutters=True),
+    ], no_gutters=False),
+    html.Br(),html.Br()
     navbar_footer
 ])
 
 
 # # 3. Run Application
 
-# In[19]:
+# In[18]:
 
 
 if __name__ == '__main__':
