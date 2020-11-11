@@ -1098,7 +1098,7 @@ app.layout = dbc.Container(fluid=True, children=[
             ]),
         ]),
     ], no_gutters=False),
-    html.Br(),html.Br()
+    html.Br(),html.Br(),
     navbar_footer
 ])
 
