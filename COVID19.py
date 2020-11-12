@@ -295,10 +295,11 @@ def update_county_figure(county_values):
     # Update remaining layout properties
     fig.update_layout(
         margin=dict(l=0, r=0, t=10, b=0),
-        hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
+        hovermode='x unified',
+        plot_bgcolor='rgba(0,0,0,0)',
         hoverlabel=dict(
             bgcolor = 'white',
-            font_size=16),
+            font_size=12),
         xaxis=dict(
             zeroline=True,
             showgrid=False,  # Removes X-axis grid lines 
@@ -1041,7 +1042,7 @@ app.layout = dbc.Container(fluid=True, children=[
     navbar, 
     html.Br(),html.Br(),html.Br(),html.Br(),
     desc, mn_head, mn_desc, 
-    html.Br(),html.Br(),html.Br(),
+    html.Br(),html.Br(),
     ## Body: MN Counties
     dbc.Row([
         ### plots
@@ -1051,11 +1052,14 @@ app.layout = dbc.Container(fluid=True, children=[
             ]),
         dbc.Col(width=6, children=[
             dbc.Col(html.H4("County-level 14-Day Case Rate Trends")), 
-            county_dropdown, 
             dcc.Graph(id="county_trend")
             ]),
         ]),
-    html.Br(),html.Br(),html.Br(),
+    dbc.Row([
+        dbc.Col(width=6, children = county_dropdown)
+        ], justify="end"),    
+    html.Br(),
+    
     dbc.Row([
         dbc.Col(width=12, children=[
         state_head, state_desc, state_dropdown, slider,
@@ -1099,7 +1103,7 @@ app.layout = dbc.Container(fluid=True, children=[
 
 # # 3. Run Application
 
-# In[18]:
+# In[ ]:
 
 
 if __name__ == '__main__':
