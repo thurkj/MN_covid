@@ -35,8 +35,10 @@ from dash.dependencies import Input, Output
 url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/'
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
+day = dt.datetime.now().strftime('%w')  # today's day of week where sunday = 0.
+
 end_date = dt.date.today()
-start_date = end_date - dt.timedelta(days=44) # Collect 44 days of data => 30 days with a 14-day window
+start_date = end_date - dt.timedelta(days=60) # Collect 44 days of data => 30 days with a 14-day window
 delta = dt.timedelta(days=1)
 
 minnesota_data = pd.DataFrame() # Initialize datframe
@@ -52,6 +54,9 @@ while start_date <= end_date:
         as_of = start_date
         del df  # erase df from memory
     start_date += delta
+    
+# Convert "Date" field to datetime
+minnesota_data['Date'] = pd.to_datetime(minnesota_data['Date'], format='%Y-%m-%d')
 
 
 # In[3]:
@@ -66,8 +71,11 @@ minnesota_data = minnesota_data.merge(pop,on='FIPS',how='outer')
 
 
 minnesota_data.drop(minnesota_data[minnesota_data['Admin2'] == 'Unassigned'].index, inplace=True)   # drop values not assigned to a county
+minnesota_data.dropna(subset=['Date'], inplace = True)  # Some dates are screwed up so drop them.
+
 minnesota_data = minnesota_data.sort_values(by=['Admin2','Date'])   # Sort data
 minnesota_data.reset_index(inplace=True)
+minnesota_data['month'] = minnesota_data['Date'].dt.strftime('%B %Y') 
 minnesota_data['new_cases'] = minnesota_data.groupby('Admin2')['Confirmed'].diff().fillna(0)
 minnesota_data['new_cases_rolling'] = minnesota_data.groupby('Admin2')['new_cases'].rolling(7).mean().fillna(0).reset_index(0,drop=True)
 minnesota_data['new_deaths'] = minnesota_data.groupby('Admin2')['Deaths'].diff().fillna(0)
@@ -98,7 +106,7 @@ minnesota_data.loc[(minnesota_data['new_cases_MNDH']>minnesota_data['new_cases_M
 # Both hybrid 20 to less than 30
 # Elem. hybrid, Middle/high school distance 30 to less than 50
 # Both distance 50 or more
-minnesota_data['schooling'] = 'Elem. & MS/HS in-person (x<10)'
+minnesota_data['schooling'] = 'Elem. & MS/HS in-person'
 minnesota_data.loc[(minnesota_data['ratio']>=10) & (minnesota_data['ratio']<20), 'schooling'] = 'Elem. in-person, MS/HS hybrid'
 minnesota_data.loc[(minnesota_data['ratio']>=20) & (minnesota_data['ratio']<30), 'schooling'] = 'Elem. & MS/HS hybrid'
 minnesota_data.loc[(minnesota_data['ratio']>=30) & (minnesota_data['ratio']<50), 'schooling'] = 'Elem. hybrid, MS/HS distance'
@@ -107,7 +115,29 @@ minnesota_data.loc[minnesota_data['ratio']>=100, 'schooling'] = 'WTF! Are you ev
 
 minnesota_data['text'] = 'County: ' + minnesota_data['Admin2'] + '<br>' +                    'MN Dept of <br>Health Statistic:    '+ minnesota_data['ratio'].astype(float).round(2).astype(str) + '<br>'+                    'Trending:             '+ minnesota_data['trend'] + '<br>'+                    'New Cases / Day: '+ minnesota_data['new_cases_rolling'].astype(float).round(2).astype(str) + '<br>'+                    'Deaths/ Day:         '+ minnesota_data['new_deaths_rolling'].astype(float).round(2).astype(str)
 
+# Adds all available categories to each time frame
+dts = minnesota_data['Date'].unique()
+catg = minnesota_data['schooling'].unique()
+for tf in dts:
+    for i in catg:
+        minnesota_data = minnesota_data.append({
+            'Date' : tf,
+            'Admin2': "NA",
+            'text' : 'N',
+            'FIPS' : '0',
+            'schooling' : i
+        }, ignore_index=True)
+        
 minnesota_data_today = minnesota_data.groupby('Admin2').tail(1) # Keep only the last observation
+
+# Adds all available categories for the legend
+for i in catg:
+    minnesota_data_today = minnesota_data_today.append({
+        'Admin2': "NA",
+        'text' : 'N',
+        'FIPS' : '0',
+        'schooling' : i
+    }, ignore_index=True)
 
 
 # ## (b) State-Level COVID-19 Data
@@ -242,9 +272,9 @@ fig_map = px.choropleth(minnesota_data_today, geojson=counties, locations='FIPS'
 fig_map.update_geos(fitbounds="locations", visible=False)
 fig_map.update_layout(legend=dict(
                         yanchor="top",
-                        y=0.43,
+                        y=0.5,
                         xanchor="left",
-                        x=0.55,
+                        x=0.58,
                         font_size=10
                       ),
                       margin={"r":0,"t":0,"l":0,"b":0},
@@ -1068,13 +1098,13 @@ app.layout = dbc.Container(fluid=True, children=[
         
         ### left plots
         dbc.Col(width=6, children=[   
-            dbc.Col(html.H4("New Cases (7-day Moving Average)")), 
+            dbc.Col(html.H4("New Cases (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="positive_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="positive_pc"), label="Per 10,000")
             ]),
             html.Br(),html.Br(),
-            dbc.Col(html.H4("New Deaths (7-day Moving Average)")),
+            dbc.Col(html.H4("New Deaths (7-day Moving Avg.)")),
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="newdeaths_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="newdeaths_pc"), label="Per 10,000")
@@ -1083,7 +1113,7 @@ app.layout = dbc.Container(fluid=True, children=[
                 
         ### right plots
         dbc.Col(width=6, children=[            
-            dbc.Col(html.H4("New Hospitalizations (7-day Moving Average)")), 
+            dbc.Col(html.H4("New Hospitalizations (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="curhospital_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="curhospital_pc"), label="Per 10,000")
