@@ -82,9 +82,24 @@ minnesota_data['new_deaths'] = minnesota_data.groupby('Admin2')['Deaths'].diff()
 minnesota_data['new_deaths_rolling'] = minnesota_data.groupby('Admin2')['new_deaths'].rolling(7).mean().reset_index(0,drop=True)
 
 
+# In[5]:
+
+
+
+# Percent Infected
+minnesota_data['perc_infected'] = 100*minnesota_data['Confirmed']/minnesota_data['pop2019']
+minnesota_data['perc_infected'] = minnesota_data['perc_infected'].fillna(0)
+
+minnesota_data['infect'] = 'Less than 5%'
+minnesota_data.loc[(minnesota_data['perc_infected']>=5) & (minnesota_data['perc_infected']<10), 'infect'] = 'Between 5% and 10%'
+minnesota_data.loc[(minnesota_data['perc_infected']>=10) & (minnesota_data['perc_infected']<15), 'infect'] = 'Between 10% and 15%'
+minnesota_data.loc[(minnesota_data['perc_infected']>=15) & (minnesota_data['perc_infected']<20), 'infect'] = 'Between 15% and 20%'
+minnesota_data.loc[minnesota_data['perc_infected']>=20, 'schooling'] = 'Greater than 20%'
+
+
 # Construct the "14-day Case Count" statistic proposed by the Minnesota Department of Health. Also add the school recommendations.
 
-# In[5]:
+# In[6]:
 
 
 # MN Dept of Health Statistic
@@ -111,13 +126,17 @@ minnesota_data.loc[(minnesota_data['ratio']>=10) & (minnesota_data['ratio']<20),
 minnesota_data.loc[(minnesota_data['ratio']>=20) & (minnesota_data['ratio']<30), 'schooling'] = 'Elem. & MS/HS hybrid'
 minnesota_data.loc[(minnesota_data['ratio']>=30) & (minnesota_data['ratio']<50), 'schooling'] = 'Elem. hybrid, MS/HS distance'
 minnesota_data.loc[(minnesota_data['ratio']>=50) & (minnesota_data['ratio']<100), 'schooling'] = 'Elem. & MS/HS distance'
-minnesota_data.loc[minnesota_data['ratio']>=100, 'schooling'] = 'WTF! Are you even listening?'
+minnesota_data.loc[minnesota_data['ratio']>=100, 'schooling'] = 'Armageddon?'
 
-minnesota_data['text'] = 'County: ' + minnesota_data['Admin2'] + '<br>' +                    'MN Dept of <br>Health Statistic:    '+ minnesota_data['ratio'].astype(float).round(2).astype(str) + '<br>'+                    'Trending:             '+ minnesota_data['trend'] + '<br>'+                    'New Cases / Day: '+ minnesota_data['new_cases_rolling'].astype(float).round(2).astype(str) + '<br>'+                    'Deaths/ Day:         '+ minnesota_data['new_deaths_rolling'].astype(float).round(2).astype(str)
+minnesota_data['text'] = 'County: ' + minnesota_data['Admin2'] + '<br>' +                    'MN Dept of <br>Health Statistic:    '+ minnesota_data['ratio'].astype(float).round(2).astype(str) + '<br>'+                    'Trending:             '+ minnesota_data['trend'] + '<br>'+                    'Percent Infected:      '+ minnesota_data['perc_infected'].astype(float).round(2).astype(str) + '<br>'+                    'New Cases / Total Cases: '+ minnesota_data['new_cases'].fillna(0).astype(int).astype(str) + ' / '+ minnesota_data['Confirmed'].fillna(0).astype(int).astype(str) + '<br>' +                    'New Deaths/ Total Deaths:         '+ minnesota_data['new_deaths'].fillna(0).astype(int).astype(str) + ' / ' + minnesota_data['Deaths'].fillna(0).astype(int).astype(str)
+
+#                    'New Cases / Day: '+ minnesota_data['new_cases_rolling'].astype(float).round(2).astype(str) + '<br>'+\
+#                    'Deaths/ Day:         '+ minnesota_data['new_deaths_rolling'].astype(float).round(2).astype(str)
 
 # Adds all available categories to each time frame
 dts = minnesota_data['Date'].unique()
 catg = minnesota_data['schooling'].unique()
+perc = minnesota_data['infect'].unique()
 for tf in dts:
     for i in catg:
         minnesota_data = minnesota_data.append({
@@ -137,14 +156,22 @@ for i in catg:
         'text' : 'N',
         'FIPS' : '0',
         'schooling' : i
-    }, ignore_index=True)
+    }, ignore_index=True)    
+    
+for i in perc:
+    minnesota_data_today = minnesota_data_today.append({
+        'Admin2': "NA",
+        'text' : 'N',
+        'FIPS' : '0',
+        'infect' : i
+    }, ignore_index=True)    
 
 
 # ## (b) State-Level COVID-19 Data
 # 
 # Load State-level COVID-19 Data via The Covid-19 Tracking Project API
 
-# In[6]:
+# In[7]:
 
 
 url = 'https://api.census.gov/data/2019/pep/population?get=NAME,POP&for=state:*'
@@ -195,7 +222,7 @@ months.reverse()
 
 # Trim covid data to just those we're interested in.
 
-# In[7]:
+# In[8]:
 
 
 state_df = covid[['date','state','positiveIncrease','hospitalizedIncrease','deathIncrease','death']]
@@ -222,7 +249,7 @@ state_df.dropna(subset=['state'],inplace=True)
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[8]:
+# In[9]:
 
 
 # Initialize Dash
@@ -232,9 +259,17 @@ app.title = 'Covid-19 U.S. Dashboard'
 server = app.server
 
 
-# ## (Row 1, Col 1) Map: MN 14-Day Case Rates by County
+# In[10]:
 
-# In[9]:
+
+minnesota_data_today['perc_infected'].describe()
+
+
+# ## (Row 1, Col 1) Minnesota Maps (Snapshots):
+
+# ### Map of Positivity Rates
+
+# In[11]:
 
 
 #===========================================
@@ -247,30 +282,30 @@ server = app.server
 with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
     counties = json.load(response)
     
-fig_map = px.choropleth(minnesota_data_today, geojson=counties, locations='FIPS', color='schooling',
+df = minnesota_data_today.dropna(subset=['infect'])
+
+fig_infect_map = px.choropleth(df, geojson=counties, locations='FIPS', color='infect',
                            color_discrete_map={
-                            'Elem. & MS/HS in-person':'green',
-                            'Elem. in-person, MS/HS hybrid':'tan',
-                            'Elem. & MS/HS hybrid':'yellow',
-                            'Elem. hybrid, MS/HS distance':'orange',
-                            'Elem. & MS/HS distance':'red',
-                            'WTF! Are you even listening?':'black'},
+                            'Less than 5%':'lightyellow',
+                            'Between 5% and 10%':'yellow',
+                            'Between 10% and 15%':'orange',
+                            'Between 15% and 20%':'red',
+                            'Greater than 20%':'black'},
                            category_orders = {
-                            'schooling':['Elem. & MS/HS in-person',
-                            'Elem. in-person, MS/HS hybrid',
-                            'Elem. & MS/HS hybrid',
-                            'Elem. hybrid, MS/HS distance',
-                            'Elem. & MS/HS distance',
-                            'WTF! Are you even listening?'
+                            'infect':['Less than 5%',
+                            'Between 5% and 10%',
+                            'Between 10% and 15%',
+                            'Between 15% and 20%',
+                            'Greater than 20%'
                             ]},
                            projection = "mercator",
-                           labels={'schooling':'Recommended Format:'},
-                           hover_name = minnesota_data_today['text'],
-                           hover_data={'FIPS':False,'schooling':False},
+                           labels={'infect':'Percent Infected:'},
+                           hover_name = df['text'],
+                           hover_data={'FIPS':False,'infect':False},
                           )
 
-fig_map.update_geos(fitbounds="locations", visible=False)
-fig_map.update_layout(legend=dict(
+fig_infect_map.update_geos(fitbounds="locations", visible=False)
+fig_infect_map.update_layout(legend=dict(
                         yanchor="top",
                         y=0.5,
                         xanchor="left",
@@ -282,9 +317,130 @@ fig_map.update_layout(legend=dict(
                       )
 
 
-# ## (Row 1, Col 2)  Line Graph: 14-Day Case Count Trends by MN County
+# ### Map of 14-day Case Rates
 
-# In[10]:
+# In[12]:
+
+
+#===========================================
+# County 14-day Case Rate Alongside MN Dept
+# of Health School Recommendations
+# (Choropleth Map of MN Counties)
+#===========================================
+
+# Load geojson county location information, organized by FIPS code
+with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
+    counties = json.load(response)
+    
+df = minnesota_data_today.dropna(subset=['schooling'])
+
+fig_school_map = px.choropleth(df, geojson=counties, locations='FIPS', color='schooling',
+                           color_discrete_map={
+                            'Elem. & MS/HS in-person':'green',
+                            'Elem. in-person, MS/HS hybrid':'tan',
+                            'Elem. & MS/HS hybrid':'yellow',
+                            'Elem. hybrid, MS/HS distance':'orange',
+                            'Elem. & MS/HS distance':'red',
+                            'Armageddon?':'black'},
+                           category_orders = {
+                            'schooling':['Elem. & MS/HS in-person',
+                            'Elem. in-person, MS/HS hybrid',
+                            'Elem. & MS/HS hybrid',
+                            'Elem. hybrid, MS/HS distance',
+                            'Elem. & MS/HS distance',
+                            'Armageddon?'
+                            ]},
+                           projection = "mercator",
+                           labels={'schooling':'Recommended Format:'},
+                           hover_name = df['text'],
+                           hover_data={'FIPS':False,'schooling':False},
+                          )
+
+fig_school_map.update_geos(fitbounds="locations", visible=False)
+fig_school_map.update_layout(legend=dict(
+                        yanchor="top",
+                        y=0.5,
+                        xanchor="left",
+                        x=0.58,
+                        font_size=10
+                      ),
+                      margin={"r":0,"t":0,"l":0,"b":0},
+                      dragmode=False
+                      )
+
+
+# ## (Row 1, Col 2)  County Trends
+
+# In[13]:
+
+
+#===========================================
+# County 14-day Case Rate Trend (Line Graphs by County)
+#===========================================
+
+@app.callback(
+    Output('county_infect_trend', 'figure'),
+    [Input('county-dropdown', 'value')])
+    
+# Update Figure
+def update_county_figure(county_values):
+                
+    if county_values is None:
+        dff = minnesota_data.pivot(index='Date',columns='Admin2',values='perc_infected')
+        dff = dff[(dff != 0).all(1)]   # Remove early values not included in the statistics
+
+    else:
+        if not isinstance(county_values, list): county_values = [county_values]
+        temp = minnesota_data.loc[minnesota_data['Admin2'].isin(county_values)]
+            
+        dff = temp.pivot(index='Date',columns='Admin2',values='perc_infected')              
+        dff = dff[(dff != 0).all(1)]   # Remove early values not included in the statistics
+        
+    fig = go.Figure()
+    for column in dff.columns.to_list():
+        fig.add_trace(
+            go.Scatter(
+                x = dff.index,
+                y = dff[column],
+                name = column,
+                mode='lines',
+                opacity=0.8,
+                hovertemplate = '<extra></extra>County: ' + column + '<br>Date: ' + pd.to_datetime(dff.index).strftime('%Y-%m-%d') +'<br>Value: %{y:.1f}'
+            )
+        )
+
+    # Update remaining layout properties
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=10, b=0),
+        hovermode='x unified',
+        plot_bgcolor='rgba(0,0,0,0)',
+        hoverlabel=dict(
+            bgcolor = 'white',
+            font_size=12),
+        xaxis=dict(
+            zeroline=True,
+            showgrid=False,  # Removes X-axis grid lines 
+            fixedrange = True
+            ),
+        yaxis=dict(
+            title="Percent of Residents Which Have Tested Positive",
+            zeroline=True, 
+            showgrid=False,  # Removes Y-axis grid lines
+            fixedrange = True
+            ),
+        annotations=[  # Source annotation
+                        dict(xref='paper',
+                            yref='paper',
+                            x=0.5, y=1.0,
+                            showarrow=False,
+                            text ='Source: Minnesota Department of Health')
+                    ]
+    )
+
+    fig.update_xaxes(showline=True, linewidth=2, linecolor='black')
+    fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
+
+    return fig
 
 
 #===========================================
@@ -358,7 +514,7 @@ def update_county_figure(county_values):
 
 # ##  (Row 2, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[11]:
+# In[14]:
 
 
 #===========================================
@@ -508,7 +664,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 2, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[12]:
+# In[15]:
 
 
 #===========================================
@@ -658,7 +814,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[13]:
+# In[16]:
 
 
 #===========================================
@@ -808,7 +964,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[14]:
+# In[17]:
 
 
 #===========================================
@@ -960,7 +1116,7 @@ def update_figure(state_values,month_values):
 
 # ## Call-backs and Control Utilities
 
-# In[15]:
+# In[18]:
 
 
 # County Dropdown
@@ -1005,7 +1161,7 @@ slider =    html.P([
 
 # ## Define HTML
 
-# In[16]:
+# In[19]:
 
 
 #####################
@@ -1030,7 +1186,7 @@ navbar_footer = dbc.NavbarSimple(
     )
 
 
-# In[17]:
+# In[20]:
 
 
 #---------------------------------------------------------------------------
@@ -1046,13 +1202,19 @@ f"""
 """    
 )
 
-mn_head = html.H1(children="1. Minnesota School Guidance")
+mn_head = html.H1(children="1. Covid-19 Prevalance Across Minnesota Counties")
 mn_desc = dcc.Markdown(
             f"""
-The following figure presents county-level COVID-19 case rates organized by MN Dept of Health School guidelines. 
-Source: Minnesota Dept of Health. The left panel presents current variation in COVID-19 Case Rates. 
-Hover your cursor over a county to observe relevant characteristics. 
-The right panel presents the evolution of COVID-19 Case Rates by County.
+The following figures present county-level COVID-19 data. Source: Minnesota Dept of Health. 
+
+
+The left panel presents current variation in COVID-19 across Minnesota counties.
+Hover your cursor over a county to observe relevant characteristics. The 14-day case rate is defined as total new 
+positive cases in the last 14 days per 10,000 residents. Data are organized according to school guidelines presented
+by the state of Minnesota in July 2020.
+
+
+The right panel presents the evolution of COVID-19 by county.
 Select which counties to analyze using the pull-down menu or by entering in the county name.
             """   
 )
@@ -1077,12 +1239,19 @@ app.layout = dbc.Container(fluid=True, children=[
     dbc.Row([
         ### plots
         dbc.Col(width=6, children=[
-            dbc.Col(html.H4("Current County 14-Day Case Rate")), 
-            dcc.Graph(id="map", figure = fig_map, style={'margin-left': '-100px'})
+            dbc.Col(html.H4("State Snapshot")), 
+            dbc.Tabs(className="nav", children=[            
+                dbc.Tab(dcc.Graph(id="school_map", figure = fig_school_map, style={'margin-left': '-100px'}), label="School Guidelines"),
+                dbc.Tab(dcc.Graph(id="infected_map", figure = fig_infect_map, style={'margin-left': '-100px'}), label="Percent Infected")
+                ]),
             ]),
+                
         dbc.Col(width=6, children=[
-            dbc.Col(html.H4("County-level 14-Day Case Rate Trends")), 
-            dcc.Graph(id="county_trend")
+            dbc.Col(html.H4("County-level Trends")), 
+            dbc.Tabs(className="nav", children=[            
+                dbc.Tab(dcc.Graph(id="county_trend"), label="14-day Case Rate"),
+                dbc.Tab(dcc.Graph(id="county_infect_trend"), label="Percent Infected")
+                ]),
             ]),
         ]),
     dbc.Row([
@@ -1133,7 +1302,7 @@ app.layout = dbc.Container(fluid=True, children=[
 
 # # 3. Run Application
 
-# In[ ]:
+# In[21]:
 
 
 if __name__ == '__main__':
