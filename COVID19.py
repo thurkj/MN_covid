@@ -5,6 +5,7 @@
 
 
 # Load necessary packages
+import numpy as np
 import pandas as pd
 from pandas.tseries.offsets import MonthEnd
 import plotly.express as px        # high-level plotly module
@@ -85,7 +86,6 @@ minnesota_data['new_deaths_rolling'] = minnesota_data.groupby('Admin2')['new_dea
 # In[5]:
 
 
-
 # Percent Infected
 minnesota_data['perc_infected'] = 100*minnesota_data['Confirmed']/minnesota_data['pop2019']
 minnesota_data['perc_infected'] = minnesota_data['perc_infected'].fillna(0)
@@ -97,9 +97,24 @@ minnesota_data.loc[(minnesota_data['perc_infected']>=15) & (minnesota_data['perc
 minnesota_data.loc[minnesota_data['perc_infected']>=20, 'schooling'] = 'Greater than 20%'
 
 
+# In[6]:
+
+
+# Days to herd immunity
+minnesota_data['change'] = minnesota_data.groupby('Admin2')['perc_infected'].diff().fillna(0)
+minnesota_data['change'] = minnesota_data.groupby('Admin2')['change'].rolling(7).mean().fillna(0).reset_index(0,drop=True)
+minnesota_data['herd_days'] = (80-minnesota_data['perc_infected'])/minnesota_data['change'] # Assumes 80% exposure needed for herd immunity
+
+# Replace missing values
+minnesota_data['herd_days'] = minnesota_data['herd_days'].fillna(0)
+minnesota_data['herd_days'].replace(np.inf,0,inplace=True)
+minnesota_data['max_herd_days'] = minnesota_data.groupby('Admin2')['herd_days'].transform('max')
+minnesota_data.loc[minnesota_data['herd_days']==0,'herd_days'] = minnesota_data['max_herd_days']
+
+
 # Construct the "14-day Case Count" statistic proposed by the Minnesota Department of Health. Also add the school recommendations.
 
-# In[6]:
+# In[7]:
 
 
 # MN Dept of Health Statistic
@@ -171,7 +186,7 @@ for i in perc:
 # 
 # Load State-level COVID-19 Data via The Covid-19 Tracking Project API
 
-# In[7]:
+# In[8]:
 
 
 url = 'https://api.census.gov/data/2019/pep/population?get=NAME,POP&for=state:*'
@@ -222,7 +237,7 @@ months.reverse()
 
 # Trim covid data to just those we're interested in.
 
-# In[8]:
+# In[9]:
 
 
 state_df = covid[['date','state','positiveIncrease','hospitalizedIncrease','deathIncrease','death']]
@@ -249,7 +264,7 @@ state_df.dropna(subset=['state'],inplace=True)
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[9]:
+# In[10]:
 
 
 # Initialize Dash
@@ -259,7 +274,7 @@ app.title = 'Covid-19 U.S. Dashboard'
 server = app.server
 
 
-# In[10]:
+# In[11]:
 
 
 minnesota_data_today['perc_infected'].describe()
@@ -269,7 +284,7 @@ minnesota_data_today['perc_infected'].describe()
 
 # ### Map of Positivity Rates
 
-# In[11]:
+# In[12]:
 
 
 #===========================================
@@ -319,7 +334,7 @@ fig_infect_map.update_layout(legend=dict(
 
 # ### Map of 14-day Case Rates
 
-# In[12]:
+# In[13]:
 
 
 #===========================================
@@ -371,7 +386,7 @@ fig_school_map.update_layout(legend=dict(
 
 # ## (Row 1, Col 2)  County Trends
 
-# In[13]:
+# In[14]:
 
 
 #===========================================
@@ -433,7 +448,7 @@ def update_county_figure(county_values):
                             yref='paper',
                             x=0.5, y=1.0,
                             showarrow=False,
-                            text ='Source: Minnesota Department of Health')
+                            text ="Source: Minnesota Department of Health. Author's calculations.")
                     ]
     )
 
@@ -502,7 +517,76 @@ def update_county_figure(county_values):
                             yref='paper',
                             x=0.5, y=1.0,
                             showarrow=False,
-                            text ='Source: Minnesota Department of Health')
+                            text ="Source: Minnesota Department of Health. Author's calculations.")
+                    ]
+    )
+
+    fig.update_xaxes(showline=True, linewidth=2, linecolor='black')
+    fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
+
+    return fig
+
+#===========================================
+# Days to Herd Immunity (Line Graphs by County)
+# Assumes 80% required exposure
+#===========================================
+
+@app.callback(
+    Output('county_herd', 'figure'),
+    [Input('county-dropdown', 'value')])
+    
+# Update Figure
+def update_county_figure(county_values):
+                
+    if county_values is None:
+        dff = minnesota_data.pivot(index='Date',columns='Admin2',values='herd_days')
+        dff = dff[(dff != 0).all(1)]   # Remove early values not included in the statistics
+
+    else:
+        if not isinstance(county_values, list): county_values = [county_values]
+        temp = minnesota_data.loc[minnesota_data['Admin2'].isin(county_values)]
+            
+        dff = temp.pivot(index='Date',columns='Admin2',values='herd_days')              
+        dff = dff[(dff != 0).all(1)]   # Remove early values not included in the statistics
+        
+    fig = go.Figure()
+    for column in dff.columns.to_list():
+        fig.add_trace(
+            go.Scatter(
+                x = dff.index,
+                y = dff[column],
+                name = column,
+                mode='lines',
+                opacity=0.8,
+                hovertemplate = '<extra></extra>County: ' + column + '<br>Date: ' + pd.to_datetime(dff.index).strftime('%Y-%m-%d') +'<br>Value: %{y:.1f}'
+            )
+        )
+
+    # Update remaining layout properties
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=10, b=0),
+        hovermode='x unified',
+        plot_bgcolor='rgba(0,0,0,0)',
+        hoverlabel=dict(
+            bgcolor = 'white',
+            font_size=12),
+        xaxis=dict(
+            zeroline=True,
+            showgrid=False,  # Removes X-axis grid lines 
+            fixedrange = True
+            ),
+        yaxis=dict(
+            title="Days to Herd Immunity (ie, 80% Exposure)",
+            zeroline=True, 
+            showgrid=False,  # Removes Y-axis grid lines
+            fixedrange = True
+            ),
+        annotations=[  # Source annotation
+                        dict(xref='paper',
+                            yref='paper',
+                            x=0.5, y=1.0,
+                            showarrow=False,
+                            text ="Source: Minnesota Department of Health. Author's calculations.")
                     ]
     )
 
@@ -514,7 +598,7 @@ def update_county_figure(county_values):
 
 # ##  (Row 2, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[14]:
+# In[15]:
 
 
 #===========================================
@@ -664,7 +748,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 2, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[15]:
+# In[16]:
 
 
 #===========================================
@@ -814,7 +898,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[16]:
+# In[17]:
 
 
 #===========================================
@@ -964,7 +1048,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[17]:
+# In[18]:
 
 
 #===========================================
@@ -1116,7 +1200,7 @@ def update_figure(state_values,month_values):
 
 # ## Call-backs and Control Utilities
 
-# In[18]:
+# In[19]:
 
 
 # County Dropdown
@@ -1161,7 +1245,7 @@ slider =    html.P([
 
 # ## Define HTML
 
-# In[19]:
+# In[20]:
 
 
 #####################
@@ -1186,7 +1270,7 @@ navbar_footer = dbc.NavbarSimple(
     )
 
 
-# In[20]:
+# In[21]:
 
 
 #---------------------------------------------------------------------------
@@ -1250,7 +1334,8 @@ app.layout = dbc.Container(fluid=True, children=[
             dbc.Col(html.H4("County-level Trends")), 
             dbc.Tabs(className="nav", children=[            
                 dbc.Tab(dcc.Graph(id="county_trend"), label="14-day Case Rate"),
-                dbc.Tab(dcc.Graph(id="county_infect_trend"), label="Percent Infected")
+                dbc.Tab(dcc.Graph(id="county_infect_trend"), label="Percent Infected"),
+                dbc.Tab(dcc.Graph(id="county_herd"), label="Days to Herd Immunity")
                 ]),
             ]),
         ]),
@@ -1302,7 +1387,7 @@ app.layout = dbc.Container(fluid=True, children=[
 
 # # 3. Run Application
 
-# In[21]:
+# In[22]:
 
 
 if __name__ == '__main__':
