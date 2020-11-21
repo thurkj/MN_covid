@@ -1391,6 +1391,6 @@ app.layout = dbc.Container(fluid=True, children=[
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True, use_reloader=False)  # Jupyter
-    #app.run_server(debug=True)    # Comment above line and uncomment this line prior to heroku deployment
+    #app.run_server(debug=True, use_reloader=False)  # Jupyter
+    app.run_server(debug=True)    # Comment above line and uncomment this line prior to heroku deployment
 
