@@ -1335,7 +1335,7 @@ app.layout = dbc.Container(fluid=True, children=[
             dbc.Tabs(className="nav", children=[            
                 dbc.Tab(dcc.Graph(id="county_trend"), label="14-day Case Rate"),
                 dbc.Tab(dcc.Graph(id="county_infect_trend"), label="Percent Infected"),
-                dbc.Tab(dcc.Graph(id="county_herd"), label="Days to Herd Immunity")
+                dbc.Tab(dcc.Graph(id="county_herd"), label="Herd Immunity")
                 ]),
             ]),
         ]),
