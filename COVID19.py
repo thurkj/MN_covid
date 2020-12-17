@@ -284,7 +284,7 @@ minnesota_data_today['perc_infected'].describe()
 
 # ### Map of Positivity Rates
 
-# In[12]:
+# In[23]:
 
 
 #===========================================
@@ -324,7 +324,7 @@ fig_infect_map.update_layout(legend=dict(
                         yanchor="top",
                         y=0.5,
                         xanchor="left",
-                        x=0.58,
+                        x=0.6,
                         font_size=10
                       ),
                       margin={"r":0,"t":0,"l":0,"b":0},
@@ -376,7 +376,7 @@ fig_school_map.update_layout(legend=dict(
                         yanchor="top",
                         y=0.5,
                         xanchor="left",
-                        x=0.58,
+                        x=0.6,
                         font_size=10
                       ),
                       margin={"r":0,"t":0,"l":0,"b":0},
@@ -1392,5 +1392,5 @@ app.layout = dbc.Container(fluid=True, children=[
 
 if __name__ == '__main__':
     #app.run_server(debug=True, use_reloader=False)  # Jupyter
-    app.run_server(debug=True)    # Comment above line and uncomment this line prior to heroku deployment
+    app.run_server(debug=False)    # Comment above line and uncomment this line prior to heroku deployment
 
