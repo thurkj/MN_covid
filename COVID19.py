@@ -39,7 +39,7 @@ today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be us
 day = dt.datetime.now().strftime('%w')  # today's day of week where sunday = 0.
 
 end_date = dt.date.today()
-start_date = end_date - dt.timedelta(days=60) # Collect 44 days of data => 30 days with a 14-day window
+start_date = end_date - dt.timedelta(days=44) # Collect 44 days of data => 30 days with a 14-day window
 delta = dt.timedelta(days=1)
 
 minnesota_data = pd.DataFrame() # Initialize datframe
@@ -284,7 +284,7 @@ minnesota_data_today['perc_infected'].describe()
 
 # ### Map of Positivity Rates
 
-# In[23]:
+# In[12]:
 
 
 #===========================================
