@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[21]:
+# In[20]:
 
 
 # Load necessary packages
@@ -10,26 +10,29 @@ import pandas as pd
 from pandas.tseries.offsets import MonthEnd
 import plotly.express as px        # high-level plotly module
 import plotly.graph_objects as go  # lower-level plotly module with more functions
-import pandas_datareader as pdr    # we are grabbing the data and wb functions from the package
 import datetime as dt              # for time and date
-import requests                    # api module
-from urllib.request import urlopen
-import json
+import json                        # For loading county FIPS data
 
 import dash
 import dash_core_components as dcc
 import dash_bootstrap_components as dbc
 import dash_html_components as html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 
 # Modeled after 
 # https://covid19-bayesian.fz-juelich.de/
+# https://github.com/FZJ-JSC/jupyter-jsc-dashboards/blob/master/covid19/covid19dynstat-dash.ipynb
 
 
 # # 1. Read Data
 
-# In[22]:
+# In[21]:
 
+
+#excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
+#minnesota_data = pd.read_csv('s3://mncovid19data/minnesota_data.csv',index_col=False)
+#minnesota_data_today = pd.read_csv('s3://mncovid19data/minnesota_data_today.csv',index_col=False)
+#state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
 
 excess_deaths = pd.read_csv('excess_deaths.csv',index_col=False)
 minnesota_data = pd.read_csv('minnesota_data.csv',index_col=False)
@@ -41,7 +44,7 @@ with open('geojson-counties-fips.json') as response:  # Loads local file
     counties = json.load(response)    
 
 
-# In[23]:
+# In[22]:
 
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
@@ -54,7 +57,6 @@ state_df['date'] = pd.to_datetime(state_df['date'], format='%Y-%m-%d')
 # Create list of months
 temp = state_df['date'].dt.strftime('%B %Y') 
 months = temp.unique().tolist()
-#months.reverse()
 
 
 # # 2. Build Web Application
@@ -64,13 +66,13 @@ months = temp.unique().tolist()
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[24]:
+# In[23]:
 
 
 # Initialize Dash
 #app = dash.Dash(external_stylesheets=[dbc.themes.LUX])
 app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY])
-server = app.server
+server = app.server  # Name Heroku will look for
 app.title = 'Covid-19 U.S. Dashboard'
 
 
@@ -78,7 +80,7 @@ app.title = 'Covid-19 U.S. Dashboard'
 
 # ### Map of Positivity Rates
 
-# In[25]:
+# In[24]:
 
 
 #===========================================
@@ -128,7 +130,7 @@ fig_infect_map.update_layout(legend=dict(
 
 # ### Map of 14-day Case Rates
 
-# In[26]:
+# In[25]:
 
 
 #===========================================
@@ -176,16 +178,16 @@ fig_school_map.update_layout(legend=dict(
 
 # ## (Row 1, Col 2)  County Trends
 
-# In[27]:
+# In[26]:
 
 
 #===========================================
-# County 14-day Case Rate Trend (Line Graphs by County)
+# County Infections (Line Graphs by County)
 #===========================================
 
 @app.callback(
     Output('county_infect_trend', 'figure'),
-    [Input('county-dropdown', 'value')])
+    [Input('county-dropdown2', 'value')])
     
 # Update Figure
 def update_county_figure(county_values):
@@ -254,7 +256,7 @@ def update_county_figure(county_values):
 
 @app.callback(
     Output('county_trend', 'figure'),
-    [Input('county-dropdown', 'value')])
+    [Input('county-dropdown1', 'value')])
     
 # Update Figure
 def update_county_figure(county_values):
@@ -316,79 +318,10 @@ def update_county_figure(county_values):
 
     return fig
 
-#===========================================
-# Days to Herd Immunity (Line Graphs by County)
-# Assumes 80% required exposure
-#===========================================
-
-@app.callback(
-    Output('county_herd', 'figure'),
-    [Input('county-dropdown', 'value')])
-    
-# Update Figure
-def update_county_figure(county_values):
-                
-    if county_values is None:
-        dff = minnesota_data.pivot(index='Date',columns='Admin2',values='herd_days')
-        dff = dff[(dff != 0).all(1)]   # Remove early values not included in the statistics
-
-    else:
-        if not isinstance(county_values, list): county_values = [county_values]
-        temp = minnesota_data.loc[minnesota_data['Admin2'].isin(county_values)]
-            
-        dff = temp.pivot(index='Date',columns='Admin2',values='herd_days')              
-        dff = dff[(dff != 0).all(1)]   # Remove early values not included in the statistics
-        
-    fig = go.Figure()
-    for column in dff.columns.to_list():
-        fig.add_trace(
-            go.Scatter(
-                x = dff.index,
-                y = dff[column],
-                name = column,
-                mode='lines',
-                opacity=0.8,
-                hovertemplate = '<extra></extra>County: ' + column + '<br>Date: ' + pd.to_datetime(dff.index).strftime('%Y-%m-%d') +'<br>Value: %{y:.1f}'
-            )
-        )
-
-    # Update remaining layout properties
-    fig.update_layout(
-        margin=dict(l=0, r=0, t=10, b=0),
-        hovermode='x unified',
-        plot_bgcolor='rgba(0,0,0,0)',
-        hoverlabel=dict(
-            bgcolor = 'white',
-            font_size=12),
-        xaxis=dict(
-            zeroline=True,
-            showgrid=False,  # Removes X-axis grid lines 
-            fixedrange = True
-            ),
-        yaxis=dict(
-            title="Days to Herd Immunity (ie, 80% Exposure)",
-            zeroline=True, 
-            showgrid=False,  # Removes Y-axis grid lines
-            fixedrange = True
-            ),
-        annotations=[  # Source annotation
-                        dict(xref='paper',
-                            yref='paper',
-                            x=0.5, y=1.0,
-                            showarrow=False,
-                            text ="Source: Minnesota Department of Health. Author's calculations.")
-                    ]
-    )
-
-    fig.update_xaxes(showline=True, linewidth=2, linecolor='black')
-    fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
-
-    return fig
-
 
 # ## (Row 2, Col 1) U.S. Excess Deaths
 
-# In[28]:
+# In[27]:
 
 
 
@@ -484,7 +417,7 @@ def update_figure(state_values):
 
 # ## (Row 2, Col 2) Excess Deaths in Different States
 
-# In[29]:
+# In[28]:
 
 
 @app.callback(
@@ -577,7 +510,7 @@ def update_figure(state_values):
 
 # ##  (Row 2, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[30]:
+# In[29]:
 
 
 #===========================================
@@ -727,7 +660,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 2, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[31]:
+# In[30]:
 
 
 #===========================================
@@ -877,7 +810,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[32]:
+# In[31]:
 
 
 #===========================================
@@ -1027,7 +960,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[33]:
+# In[32]:
 
 
 #===========================================
@@ -1177,15 +1110,111 @@ def update_figure(state_values,month_values):
     return fig
 
 
+# In[33]:
+
+
+modal_calc = html.Div(
+    [
+        dbc.Button("Calculating Expected Deaths", id="open_calc"),
+        dbc.Modal(
+            [
+                dbc.ModalHeader("Intuitive Primer on Calculating Excess Deaths"),
+                dbc.ModalBody(
+                dcc.Markdown(
+                            f"""
+                            "Excess Deaths" defined as "Observed Deaths" minus "Expected Deaths" where 
+                            the latter requires some explanation. The calculation of "Expected Deaths" 
+                            is based on historical counts of deaths (from 2013 to present) using the 
+                            approach of Farrington et al (1996) which amounts to estimating a negative binomial 
+                            (because deaths are counts, not continuous) non-linear regression equation. 
+                            The equation uses cosines and sines to account for trends and seasonality 
+                            (you can see these patterns in the left chart). Yes, this sounds fancy and the math 
+                            looks daunting but you should think of this as approximately
+                             "expected number of deaths is equal to counting the number of 
+                            deaths this week of the year in past data and taking an average."
+                            """
+                            )
+                            ),
+                dbc.ModalFooter(
+                    dbc.Button("Close", id="close_calc", className="ml-auto")
+                ),
+            ],
+            id="modal_calc",
+        ),
+    ],
+    style={"margin-left": "15px"}
+)
+
+
+@app.callback(
+    Output("modal_calc", "is_open"),
+    [Input("open_calc", "n_clicks"), Input("close_calc", "n_clicks")],
+    [State("modal_calc", "is_open")],
+)
+def toggle_modal(n1, n2, is_open):
+    if n1 or n2:
+        return not is_open
+    return is_open
+
+modal_data = html.Div(
+    [
+        dbc.Button("About Weekly Death Data", id="open_data"),
+        dbc.Modal(
+            [
+                dbc.ModalHeader("About the Data"),
+                dbc.ModalBody(
+                dcc.Markdown(
+                            f"""
+                            Death counts from the National Vital Statistics System database since this is the timeliest mortality data.
+                            Number of deaths reported correspond to total number of deaths received and coded as of the date of analysis
+                            but may not represent all deaths that occurred in that period, especially for recent data as
+                            the time lag between when the death occurred and when the death certificate is completed, submitted to NCHS and 
+                            processed for reporting purposes can be large -- between 1 and 8 weeks depending upon jurisdiction. 
+                            Data for New York state exclude New York City. 
+                            """
+                            )
+                            ),
+                dbc.ModalFooter(
+                    dbc.Button("Close", id="close_data", className="ml-auto")
+                ),
+            ],
+            id="modal_data",
+        ),
+    ],
+    style={"margin-left": "15px"}
+)
+
+@app.callback(
+    Output("modal_data", "is_open"),
+    [Input("open_data", "n_clicks"), Input("close_data", "n_clicks")],
+    [State("modal_data", "is_open")],
+)
+def toggle_modal(n1, n2, is_open):
+    if n1 or n2:
+        return not is_open
+    return is_open
+
+
 # ## Call-backs and Control Utilities
 
 # In[34]:
 
 
 # County Dropdown
-county_dropdown =  html.P([
+county_dropdown1 =  html.P([
             dcc.Dropdown(
-            id='county-dropdown',
+            id='county-dropdown1',
+            options=[{'label': i, 'value': i} for i in minnesota_data['Admin2'].dropna().unique().tolist()],
+            multi=True,
+            searchable= True,
+            value=['Hennepin','Carver'])
+            ], style = {'width' : '90%',
+                        'fontSize' : '20px',
+                        'padding-right' : '0px'})
+
+county_dropdown2 =  html.P([
+            dcc.Dropdown(
+            id='county-dropdown2',
             options=[{'label': i, 'value': i} for i in minnesota_data['Admin2'].dropna().unique().tolist()],
             multi=True,
             searchable= True,
@@ -1292,6 +1321,14 @@ by the state of Minnesota in July 2020.
 
 The right panel presents the evolution of COVID-19 by county.
 Select which counties to analyze using the pull-down menu or by entering in the county name.
+
+In the second tab, I present estimates of the percent of each county's residents who have been infected.
+This calculation begins with cumulative positive cases by location and time. I then adjust for un-reported
+cases assuming that for every 1 positive case, there exist 7.1 unreported cases (i.e., I multiply case counts by 8.1).
+Finally, I divide by total county population using 2019 estimates. Results are sensitive to the above report:unreport statistic. The 1:7.1 statistic I use 
+is on the low-end of estimates and is sourced from a recent publication by CDC researchers using
+data from February through September 2020 [article](https://academic.oup.com/cid/advance-article/doi/10.1093/cid/ciaa1780/6000389).
+                #
             """   
 )
 
@@ -1303,7 +1340,29 @@ Select midwestern states are included by default but you can modify the analysis
 states, periods, and/or standardize the statistics by population.
             """   
 )
+        
+tab1_content = dbc.Card(
+    dbc.CardBody(
+        [
+        dbc.Row([    
+        dbc.Col([html.Br(),html.Br(),dcc.Graph(id="school_map", figure = fig_school_map)],width=6), 
+        dbc.Col([county_dropdown1,dcc.Graph(id="county_trend")],width=6)
+            ])
+        ],
+    ),
+)
 
+tab2_content = dbc.Card(
+    dbc.CardBody(
+        [
+        dbc.Row([
+        dbc.Col([html.Br(),html.Br(),dcc.Graph(id="infected_map", figure = fig_infect_map)],width=6), 
+        dbc.Col([county_dropdown2,dcc.Graph(id="county_infect_trend")],width=6)
+            ])
+        ],
+    ),
+)
+    
 # App Layout
 app.layout = dbc.Container(fluid=True, children=[
     ## Top
@@ -1311,29 +1370,17 @@ app.layout = dbc.Container(fluid=True, children=[
     html.Br(),html.Br(),html.Br(),html.Br(),
     desc, mn_head, mn_desc, 
     html.Br(),html.Br(),
-    ## Body: MN Counties
-    dbc.Row([
-        ### plots
-        dbc.Col(width=6, children=[
-            dbc.Col(html.H4("State Snapshot")), 
-            dbc.Tabs(className="nav", children=[            
-                dbc.Tab(dcc.Graph(id="school_map", figure = fig_school_map, style={'margin-left': '-100px'}), label="School Guidelines"),
-                dbc.Tab(dcc.Graph(id="infected_map", figure = fig_infect_map, style={'margin-left': '-100px'}), label="Percent Infected")
-                ]),
-            ]),
-                
-        dbc.Col(width=6, children=[
-            dbc.Col(html.H4("County-level Trends")), 
-            dbc.Tabs(className="nav", children=[            
-                dbc.Tab(dcc.Graph(id="county_trend"), label="14-day Case Rate"),
-                dbc.Tab(dcc.Graph(id="county_infect_trend"), label="Percent Infected"),
-                dbc.Tab(dcc.Graph(id="county_herd"), label="Herd Immunity")
-                ]),
-            ]),
-        ]),
-    dbc.Row([
-        dbc.Col(width=6, children = county_dropdown)
-        ], justify="end"),    
+    
+    ## 
+    dbc.Row(dbc.Col(width=12, children = [
+        dbc.Tabs(
+            [
+                dbc.Tab(tab1_content, label="14-Day Case Rates"),
+                dbc.Tab(tab2_content, label="Level of Infection"),
+            ]
+        )           
+        ])
+    ),    
     html.Br(),
     
     dbc.Row([
@@ -1341,12 +1388,13 @@ app.layout = dbc.Container(fluid=True, children=[
         state_head, state_desc, state_dropdown, slider,
         html.Br(),html.Br()
         ]),
-                
+
         ### left plots
         dbc.Col(width=6, children=[   
             dbc.Row(
             children=[html.H4("Observed vs Expected Deaths in:  "),state_dropdown_alt]),
             dbc.Col(dcc.Graph(id="excess_deaths")),
+            dbc.Row([modal_data, modal_calc]),
             html.Br(),html.Br(),
             dbc.Col(html.H4("New Cases (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
@@ -1365,7 +1413,7 @@ app.layout = dbc.Container(fluid=True, children=[
         dbc.Col(width=6, children=[           
             dbc.Col(html.H4("Excess Deaths by States")), 
             dbc.Col(dcc.Graph(id="excess_deaths_states")),
-            html.Br(),html.Br(),
+            html.Br(),html.Br(),html.Br(),html.Br(),
             dbc.Col(html.H4("New Hospitalizations (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="curhospital_raw"), label="Raw Data"),
