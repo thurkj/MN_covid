@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[21]:
 
 
 # Load necessary packages
@@ -26,265 +26,58 @@ from dash.dependencies import Input, Output
 # https://covid19-bayesian.fz-juelich.de/
 
 
-# # 1. Load Data via API
-# 
-# ## (a) MN County-Level Data from Johns Hopkins 
+# # 1. Read Data
 
-# In[2]:
+# In[22]:
 
 
-url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/'
+excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
+minnesota_data = pd.read_csv('s3://mncovid19data/minnesota_data.csv',index_col=False)
+minnesota_data_today = pd.read_csv('s3://mncovid19data/minnesota_data_today.csv',index_col=False)
+state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
+
+# Load json file
+with open('geojson-counties-fips.json') as response:  # Loads local file
+    counties = json.load(response)    
+
+
+# In[23]:
+
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
-day = dt.datetime.now().strftime('%w')  # today's day of week where sunday = 0.
 
-end_date = dt.date.today()
-start_date = end_date - dt.timedelta(days=44) # Collect 44 days of data => 30 days with a 14-day window
-delta = dt.timedelta(days=1)
-
-minnesota_data = pd.DataFrame() # Initialize datframe
-while start_date <= end_date:
-    
-    request = requests.get(url+start_date.strftime('%m-%d-%Y')+'.csv')
-    if request.status_code == 200:
-        df = pd.read_csv(url+start_date.strftime('%m-%d-%Y')+'.csv')
-        df = df.dropna(subset=['Admin2'])
-        df = df[df['Province_State']=="Minnesota"]
-        df['Date'] = start_date
-        minnesota_data = minnesota_data.append(df, ignore_index=True)
-        as_of = start_date
-        del df  # erase df from memory
-    start_date += delta
-    
-# Convert "Date" field to datetime
+# Set dates to datetime
+excess_deaths['Date'] = pd.to_datetime(excess_deaths['Date'], format='%Y-%m-%d')
 minnesota_data['Date'] = pd.to_datetime(minnesota_data['Date'], format='%Y-%m-%d')
+state_df['date'] = pd.to_datetime(state_df['date'], format='%Y-%m-%d')
+
+# Create list of months
+temp = state_df['date'].dt.strftime('%B %Y') 
+months = temp.unique().tolist()
+#months.reverse()
 
 
-# In[3]:
-
-
-# Merge in county-level population.
-pop = pd.read_excel('county_population.xlsx')
-minnesota_data = minnesota_data.merge(pop,on='FIPS',how='outer')
-
-
-# In[4]:
-
-
-minnesota_data.drop(minnesota_data[minnesota_data['Admin2'] == 'Unassigned'].index, inplace=True)   # drop values not assigned to a county
-minnesota_data.dropna(subset=['Date'], inplace = True)  # Some dates are screwed up so drop them.
-
-minnesota_data = minnesota_data.sort_values(by=['Admin2','Date'])   # Sort data
-minnesota_data.reset_index(inplace=True)
-minnesota_data['month'] = minnesota_data['Date'].dt.strftime('%B %Y') 
-minnesota_data['new_cases'] = minnesota_data.groupby('Admin2')['Confirmed'].diff().fillna(0)
-minnesota_data['new_cases_rolling'] = minnesota_data.groupby('Admin2')['new_cases'].rolling(7).mean().fillna(0).reset_index(0,drop=True)
-minnesota_data['new_deaths'] = minnesota_data.groupby('Admin2')['Deaths'].diff().fillna(0)
-minnesota_data['new_deaths_rolling'] = minnesota_data.groupby('Admin2')['new_deaths'].rolling(7).mean().reset_index(0,drop=True)
-
-
-# In[5]:
-
-
-# Percent Infected
-minnesota_data['perc_infected'] = 100*minnesota_data['Confirmed']/minnesota_data['pop2019']
-minnesota_data['perc_infected'] = minnesota_data['perc_infected'].fillna(0)
-
-minnesota_data['infect'] = 'Less than 5%'
-minnesota_data.loc[(minnesota_data['perc_infected']>=5) & (minnesota_data['perc_infected']<10), 'infect'] = 'Between 5% and 10%'
-minnesota_data.loc[(minnesota_data['perc_infected']>=10) & (minnesota_data['perc_infected']<15), 'infect'] = 'Between 10% and 15%'
-minnesota_data.loc[(minnesota_data['perc_infected']>=15) & (minnesota_data['perc_infected']<20), 'infect'] = 'Between 15% and 20%'
-minnesota_data.loc[minnesota_data['perc_infected']>=20, 'schooling'] = 'Greater than 20%'
-
-
-# In[6]:
-
-
-# Days to herd immunity
-minnesota_data['change'] = minnesota_data.groupby('Admin2')['perc_infected'].diff().fillna(0)
-minnesota_data['change'] = minnesota_data.groupby('Admin2')['change'].rolling(7).mean().fillna(0).reset_index(0,drop=True)
-minnesota_data['herd_days'] = (80-minnesota_data['perc_infected'])/minnesota_data['change'] # Assumes 80% exposure needed for herd immunity
-
-# Replace missing values
-minnesota_data['herd_days'] = minnesota_data['herd_days'].fillna(0)
-minnesota_data['herd_days'].replace(np.inf,0,inplace=True)
-minnesota_data['max_herd_days'] = minnesota_data.groupby('Admin2')['herd_days'].transform('max')
-minnesota_data.loc[minnesota_data['herd_days']==0,'herd_days'] = minnesota_data['max_herd_days']
-
-
-# Construct the "14-day Case Count" statistic proposed by the Minnesota Department of Health. Also add the school recommendations.
-
-# In[7]:
-
-
-# MN Dept of Health Statistic
-minnesota_data['new_cases_MNDH'] = minnesota_data.groupby('Admin2')['new_cases'].rolling(14).sum().fillna(0).reset_index(0,drop=True)
-minnesota_data['ratio'] = 1e+4*minnesota_data['new_cases_MNDH']/minnesota_data['pop2019']
-
-# Assess trend
-minnesota_data['new_cases_21days'] = minnesota_data.groupby('Admin2')['new_cases'].rolling(21).sum().fillna(0).reset_index(0,drop=True)
-minnesota_data['new_cases_7days'] = minnesota_data.groupby('Admin2')['new_cases'].rolling(7).sum().fillna(0).reset_index(0,drop=True)
-minnesota_data['new_cases_MNDH_previous'] = minnesota_data['new_cases_21days'] - minnesota_data['new_cases_7days']
-minnesota_data['ratio_previous'] = 1e+4*minnesota_data['new_cases_MNDH_previous']/minnesota_data['pop2019']
-
-minnesota_data['trend'] = 'Downward'
-minnesota_data.loc[(minnesota_data['new_cases_MNDH']>minnesota_data['new_cases_MNDH_previous']), 'trend'] = 'Upward'
-
-# MN Dept of Health School Guidelines 
-# In-person learning for all students 0 to less than 10
-# Elem. in-person, Middle/high school hybrid 10 to less than 20
-# Both hybrid 20 to less than 30
-# Elem. hybrid, Middle/high school distance 30 to less than 50
-# Both distance 50 or more
-minnesota_data['schooling'] = 'Elem. & MS/HS in-person'
-minnesota_data.loc[(minnesota_data['ratio']>=10) & (minnesota_data['ratio']<20), 'schooling'] = 'Elem. in-person, MS/HS hybrid'
-minnesota_data.loc[(minnesota_data['ratio']>=20) & (minnesota_data['ratio']<30), 'schooling'] = 'Elem. & MS/HS hybrid'
-minnesota_data.loc[(minnesota_data['ratio']>=30) & (minnesota_data['ratio']<50), 'schooling'] = 'Elem. hybrid, MS/HS distance'
-minnesota_data.loc[(minnesota_data['ratio']>=50) & (minnesota_data['ratio']<100), 'schooling'] = 'Elem. & MS/HS distance'
-minnesota_data.loc[minnesota_data['ratio']>=100, 'schooling'] = 'Armageddon?'
-
-minnesota_data['text'] = 'County: ' + minnesota_data['Admin2'] + '<br>' +                    'MN Dept of <br>Health Statistic:    '+ minnesota_data['ratio'].astype(float).round(2).astype(str) + '<br>'+                    'Trending:             '+ minnesota_data['trend'] + '<br>'+                    'Percent Infected:      '+ minnesota_data['perc_infected'].astype(float).round(2).astype(str) + '<br>'+                    'New Cases / Total Cases: '+ minnesota_data['new_cases'].fillna(0).astype(int).astype(str) + ' / '+ minnesota_data['Confirmed'].fillna(0).astype(int).astype(str) + '<br>' +                    'New Deaths/ Total Deaths:         '+ minnesota_data['new_deaths'].fillna(0).astype(int).astype(str) + ' / ' + minnesota_data['Deaths'].fillna(0).astype(int).astype(str)
-
-#                    'New Cases / Day: '+ minnesota_data['new_cases_rolling'].astype(float).round(2).astype(str) + '<br>'+\
-#                    'Deaths/ Day:         '+ minnesota_data['new_deaths_rolling'].astype(float).round(2).astype(str)
-
-# Adds all available categories to each time frame
-dts = minnesota_data['Date'].unique()
-catg = minnesota_data['schooling'].unique()
-perc = minnesota_data['infect'].unique()
-for tf in dts:
-    for i in catg:
-        minnesota_data = minnesota_data.append({
-            'Date' : tf,
-            'Admin2': "NA",
-            'text' : 'N',
-            'FIPS' : '0',
-            'schooling' : i
-        }, ignore_index=True)
-        
-minnesota_data_today = minnesota_data.groupby('Admin2').tail(1) # Keep only the last observation
-
-# Adds all available categories for the legend
-for i in catg:
-    minnesota_data_today = minnesota_data_today.append({
-        'Admin2': "NA",
-        'text' : 'N',
-        'FIPS' : '0',
-        'schooling' : i
-    }, ignore_index=True)    
-    
-for i in perc:
-    minnesota_data_today = minnesota_data_today.append({
-        'Admin2': "NA",
-        'text' : 'N',
-        'FIPS' : '0',
-        'infect' : i
-    }, ignore_index=True)    
-
-
-# ## (b) State-Level COVID-19 Data
-# 
-# Load State-level COVID-19 Data via The Covid-19 Tracking Project API
-
-# In[8]:
-
-
-url = 'https://api.census.gov/data/2019/pep/population?get=NAME,POP&for=state:*'
-    
-response = requests.get(url)
-population = pd.read_json(response.text)  # convert to dataframe
-population.head()
-
-population.rename(columns=population.iloc[0],inplace=True)
-population.drop(0,inplace=True)
-population.drop(['state'], axis=1,inplace=True)
-
-abbrev = pd.read_csv('state_abbrev.csv',header=None)  # convert to dataframe
-abbrev.rename(columns={0:'NAME',1:'state'},inplace=True)
-
-population = population.merge(abbrev,on='NAME',how='outer')
-population.drop(['NAME'], axis=1,inplace=True)
-population['POP'] = population.POP.astype(float)
-
-url = 'https://api.covidtracking.com/v1/states/daily.json'
-    
-response = requests.get(url)
-
-if response.status_code == 200: 
-    print('Download successful')
-    covid = pd.read_json(response.text)  # convert to dataframe
-elif response.status_code == 301: 
-    print('The server redirected to a different endpoint.')
-elif response.status_code == 401: 
-    print('Bad request.')
-elif response.status_code == 401: 
-    print('Authentication required.')
-elif response.status_code == 403: 
-    print('Access denied.')
-elif response.status_code == 404: 
-    print('Resource not found')
-else: 
-    print('Server busy')
-
-# Clean-up data
-covid['date'] = pd.to_datetime(covid['date'], format='%Y%m%d')
-covid['month'] = covid['date'].dt.strftime('%B %Y') 
-covid.drop(covid[covid['date'] < '2020-03-01'].index, inplace=True)   # Drop January and February when there are few cases
-
-months = covid['month'].unique().tolist()
-months.reverse()
-
-
-# Trim covid data to just those we're interested in.
-
-# In[9]:
-
-
-state_df = covid[['date','state','positiveIncrease','hospitalizedIncrease','deathIncrease','death']]
-del covid # Drop to save application memory
-
-# Sort
-state_df = state_df.sort_values(by=['state','date'])
-state_df.reset_index(inplace=True)
-
-state_df['new_cases'] = state_df.groupby('state')['positiveIncrease'].rolling(7).mean().fillna(0).reset_index(0,drop=True)
-state_df['new_hospitalized'] = state_df.groupby('state')['hospitalizedIncrease'].rolling(7).mean().fillna(0).reset_index(0,drop=True)
-state_df['new_deaths'] = state_df.groupby('state')['deathIncrease'].rolling(7).mean().fillna(0).reset_index(0,drop=True)
-state_df = state_df.rename(columns={"death":"total_deaths"})
-
-# Add population information
-state_df = state_df.merge(population,on='state',how='left')
-state_df.dropna(subset=['state'],inplace=True)
-
-
-# # 2. Build Application
+# # 2. Build Web Application
 # 
 
 # ## Define Application Structure
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[10]:
+# In[24]:
 
 
 # Initialize Dash
 #app = dash.Dash(external_stylesheets=[dbc.themes.LUX])
 app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY])
 app.title = 'Covid-19 U.S. Dashboard'
-server = app.server
-
-
-# In[11]:
-
-
-minnesota_data_today['perc_infected'].describe()
 
 
 # ## (Row 1, Col 1) Minnesota Maps (Snapshots):
 
 # ### Map of Positivity Rates
 
-# In[12]:
+# In[25]:
 
 
 #===========================================
@@ -294,8 +87,8 @@ minnesota_data_today['perc_infected'].describe()
 #===========================================
 
 # Load geojson county location information, organized by FIPS code
-with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
-    counties = json.load(response)
+#with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
+#    counties = json.load(response)
     
 df = minnesota_data_today.dropna(subset=['infect'])
 
@@ -334,7 +127,7 @@ fig_infect_map.update_layout(legend=dict(
 
 # ### Map of 14-day Case Rates
 
-# In[13]:
+# In[26]:
 
 
 #===========================================
@@ -342,10 +135,6 @@ fig_infect_map.update_layout(legend=dict(
 # of Health School Recommendations
 # (Choropleth Map of MN Counties)
 #===========================================
-
-# Load geojson county location information, organized by FIPS code
-with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
-    counties = json.load(response)
     
 df = minnesota_data_today.dropna(subset=['schooling'])
 
@@ -386,7 +175,7 @@ fig_school_map.update_layout(legend=dict(
 
 # ## (Row 1, Col 2)  County Trends
 
-# In[14]:
+# In[27]:
 
 
 #===========================================
@@ -596,9 +385,198 @@ def update_county_figure(county_values):
     return fig
 
 
+# ## (Row 2, Col 1) U.S. Excess Deaths
+
+# In[28]:
+
+
+
+@app.callback(
+    Output('excess_deaths', 'figure'),
+    [Input('state-dropdown_alt', 'value')])
+
+# Update Figure
+def update_figure(state_values):
+
+    dff = excess_deaths.loc[excess_deaths['state'].isin([state_values])]
+    dff.set_index('Date',inplace=True)
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x = dff.index,
+            y = dff['average_expected_count'],
+            name = 'Expected',
+            mode='lines',
+            marker_color='orange',
+            opacity=0.9,
+            #hovertemplate = '<extra></extra>County: ' + column + '<br>Date: ' + pd.to_datetime(dff.index).strftime('%Y-%m-%d') +'<br>Value: %{y:.1f}'
+        )
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x = dff.index,
+            y = dff['observed_number'],
+            name = 'Observed',
+            opacity=0.3,
+            marker_color='blue',
+            #hovertemplate = '<extra></extra>County: ' + column + '<br>Date: ' + pd.to_datetime(dff.index).strftime('%Y-%m-%d') +'<br>Value: %{y:.1f}'
+        )
+    )
+
+    # Update remaining layout properties
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=10, b=0),
+        hovermode='x unified',
+        plot_bgcolor='rgba(0,0,0,0)',
+        hoverlabel=dict(
+            bgcolor = 'white',
+            font_size=12),
+        xaxis=dict(
+            zeroline=True,
+            showgrid=False,  # Removes X-axis grid lines 
+            fixedrange = True
+            ),
+        yaxis=dict(
+            title="Total Weekly Deaths",
+            zeroline=True, 
+            showgrid=False,  # Removes Y-axis grid lines
+            fixedrange = True
+            ),
+        annotations=[  # Source annotation
+                        dict(xref='paper',
+                            yref='paper',
+                            x=0.5, y=1.0,
+                            showarrow=False,
+                            text ="Source: National Center for Health Statistics.")
+                    ]
+    )
+
+    fig.add_shape(
+                type="line",
+                yref= 'paper', y0= 0, y1= .95,
+                xref= 'x', x0= dt.datetime(2020, 3, 1), x1= dt.datetime(2020, 3, 1),
+                line=dict(
+                    color="Black",
+                    width=2,
+                    dash="dash",
+                ),
+                layer = 'above'
+    )
+
+    fig.add_annotation(
+                x=dt.datetime(2019, 10, 1),
+                y=.9,
+                xref="x",
+                yref="paper",
+                text="<b>Covid-19 Declared</b><br><b> a Pandemic</b><br><b> (March 2020)</b>",
+                showarrow=True,
+                arrowhead=5,
+                ax=0,
+                ay=0)
+
+    fig.update_xaxes(showline=True, linewidth=2, linecolor='black')
+    fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
+    return fig
+
+
+# ## (Row 2, Col 2) Excess Deaths in Different States
+
+# In[29]:
+
+
+@app.callback(
+    Output('excess_deaths_states', 'figure'),
+    [Input('state-dropdown', 'value')])
+    
+# Update Figure
+def update_figure(state_values):
+        
+    if state_values is None:
+        dff = excess_deaths.copy()
+                
+        dff.drop(dff[dff['state'] == "United States"].index, inplace=True)
+        dff = dff.pivot(index='Date',columns='state',values='excess_deaths')        
+    else:
+        if not isinstance(state_values, list): state_values = [state_values]
+        temp = excess_deaths.loc[excess_deaths['state'].isin(state_values)]
+        
+        dff = temp.pivot(index='Date',columns='state',values='excess_deaths')        
+    
+    fig = go.Figure()
+    for column in dff.columns.to_list():
+        fig.add_trace(
+                go.Scatter(
+                    x = dff.index,
+                    y = dff[column],
+                    name = column,
+                    mode='lines',
+                    opacity=0.8,
+                    hovertemplate = '<extra></extra>State: ' + column + '<br>Date: ' + dff.index.strftime('%m/%d') +'<br>Value: %{y:.1f}'
+                )
+            )
+
+    # Update remaining layout properties
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=10, b=0),
+        hovermode='x unified',
+        plot_bgcolor='rgba(0,0,0,0)',
+        hoverlabel=dict(
+            bgcolor = 'white',
+            font_size=12),
+        xaxis=dict(
+            zeroline=True,
+            showgrid=False,  # Removes X-axis grid lines 
+            fixedrange = True
+            ),
+        yaxis=dict(
+            title="Weekly Excess Deaths = Observed - Expected Deaths",
+            zeroline=True,   # Show the zero line. Otherwise say "False"
+            zerolinecolor='Black', # Make the zero line "Black"      
+            showgrid=False,  # Removes Y-axis grid lines
+            fixedrange = True
+            ),
+        annotations=[  # Source annotation
+                        dict(xref='paper',
+                            yref='paper',
+                            x=0.5, y=1.0,
+                            showarrow=False,
+                            text ="Source: National Center for Health Statistics.")
+                    ]
+    )
+
+    fig.add_shape(
+                type="line",
+                yref= 'paper', y0= 0, y1= .95,
+                xref= 'x', x0= dt.datetime(2020, 3, 1), x1= dt.datetime(2020, 3, 1),
+                line=dict(
+                    color="Black",
+                    width=2,
+                    dash="dash",
+                ),
+                layer = 'above'
+    )
+
+    fig.add_annotation(
+                x=dt.datetime(2019, 10, 1),
+                y=.9,
+                xref="x",
+                yref="paper",
+                text="<b>Covid-19 Declared</b><br><b> a Pandemic</b><br><b> (March 2020)</b>",
+                showarrow=True,
+                arrowhead=5,
+                ax=0,
+                ay=0)
+
+    fig.update_xaxes(showline=True, linewidth=2, linecolor='black')
+    fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
+    return fig
+
+
 # ##  (Row 2, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[15]:
+# In[30]:
 
 
 #===========================================
@@ -748,7 +726,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 2, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[16]:
+# In[31]:
 
 
 #===========================================
@@ -898,7 +876,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[17]:
+# In[32]:
 
 
 #===========================================
@@ -1048,7 +1026,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[18]:
+# In[33]:
 
 
 #===========================================
@@ -1200,14 +1178,14 @@ def update_figure(state_values,month_values):
 
 # ## Call-backs and Control Utilities
 
-# In[19]:
+# In[34]:
 
 
 # County Dropdown
 county_dropdown =  html.P([
             dcc.Dropdown(
             id='county-dropdown',
-            options=[{'label': i, 'value': i} for i in minnesota_data['Admin2'].unique().tolist()],
+            options=[{'label': i, 'value': i} for i in minnesota_data['Admin2'].dropna().unique().tolist()],
             multi=True,
             searchable= True,
             value=['Hennepin','Carver'])
@@ -1216,7 +1194,7 @@ county_dropdown =  html.P([
                         'padding-right' : '0px'})
 
 # Dropdown
-state_dropdown =  html.P([
+state_dropdown = html.P([
             html.Label("Select One or More States"),
             dcc.Dropdown(
             id='state-dropdown',
@@ -1229,8 +1207,21 @@ state_dropdown =  html.P([
                         'padding-left' : '100px',
                         'display': 'inline-block'})
     
+# Dropdown
+state_dropdown_alt = html.P([
+            dcc.Dropdown(
+            id='state-dropdown_alt',
+            options=[{'label': i, 'value': i} for i in excess_deaths['state'].dropna().unique().tolist()],
+            multi=False,
+            value='USA',
+            searchable= True)
+            ], style = {'height': '20px',
+                        'width' : '25%',
+                        'fontSize' : '15px',
+                        'display': 'inline-block'})
+
 # range slider
-slider =    html.P([
+slider = html.P([
             html.Label("Select Time Period"),
             dcc.RangeSlider(id = 'slider',
                         marks = {i : months[i] for i in range(0, len(months))},
@@ -1245,7 +1236,7 @@ slider =    html.P([
 
 # ## Define HTML
 
-# In[20]:
+# In[35]:
 
 
 #####################
@@ -1270,7 +1261,7 @@ navbar_footer = dbc.NavbarSimple(
     )
 
 
-# In[21]:
+# In[36]:
 
 
 #---------------------------------------------------------------------------
@@ -1349,9 +1340,13 @@ app.layout = dbc.Container(fluid=True, children=[
         state_head, state_desc, state_dropdown, slider,
         html.Br(),html.Br()
         ]),
-        
+                
         ### left plots
         dbc.Col(width=6, children=[   
+            dbc.Row(
+            children=[html.H4("Observed vs Expected Deaths in:  "),state_dropdown_alt]),
+            dbc.Col(dcc.Graph(id="excess_deaths")),
+            html.Br(),html.Br(),
             dbc.Col(html.H4("New Cases (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="positive_raw"), label="Raw Data"),
@@ -1366,7 +1361,10 @@ app.layout = dbc.Container(fluid=True, children=[
         ]),
                 
         ### right plots
-        dbc.Col(width=6, children=[            
+        dbc.Col(width=6, children=[           
+            dbc.Col(html.H4("Excess Deaths by States")), 
+            dbc.Col(dcc.Graph(id="excess_deaths_states")),
+            html.Br(),html.Br(),
             dbc.Col(html.H4("New Hospitalizations (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="curhospital_raw"), label="Raw Data"),
@@ -1387,10 +1385,11 @@ app.layout = dbc.Container(fluid=True, children=[
 
 # # 3. Run Application
 
-# In[22]:
+# In[37]:
 
 
 if __name__ == '__main__':
     #app.run_server(debug=True, use_reloader=False)  # Jupyter
-    app.run_server(debug=False)    # Comment above line and uncomment this line prior to heroku deployment
+    app.run_server(debug=False)    # Use this line prior to heroku deployment
+    #application.run(debug=False, port=8080) # Use this line for AWS
 
