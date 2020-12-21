@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[20]:
+# In[19]:
 
 
 # Load necessary packages
@@ -26,25 +26,25 @@ from dash.dependencies import Input, Output, State
 
 # # 1. Read Data
 
-# In[21]:
+# In[20]:
 
 
-#excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
-#minnesota_data = pd.read_csv('s3://mncovid19data/minnesota_data.csv',index_col=False)
-#minnesota_data_today = pd.read_csv('s3://mncovid19data/minnesota_data_today.csv',index_col=False)
-#state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
+excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
+minnesota_data = pd.read_csv('s3://mncovid19data/minnesota_data.csv',index_col=False)
+minnesota_data_today = pd.read_csv('s3://mncovid19data/minnesota_data_today.csv',index_col=False)
+state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
 
-excess_deaths = pd.read_csv('excess_deaths.csv',index_col=False)
-minnesota_data = pd.read_csv('minnesota_data.csv',index_col=False)
-minnesota_data_today = pd.read_csv('minnesota_data_today.csv',index_col=False)
-state_df = pd.read_csv('state_df.csv',index_col=False)
+#excess_deaths = pd.read_csv('excess_deaths.csv',index_col=False)
+#minnesota_data = pd.read_csv('minnesota_data.csv',index_col=False)
+#minnesota_data_today = pd.read_csv('minnesota_data_today.csv',index_col=False)
+#state_df = pd.read_csv('state_df.csv',index_col=False)
 
 # Load json file
 with open('geojson-counties-fips.json') as response:  # Loads local file
     counties = json.load(response)    
 
 
-# In[22]:
+# In[21]:
 
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
@@ -66,21 +66,21 @@ months = temp.unique().tolist()
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[23]:
+# In[22]:
 
 
 # Initialize Dash
 #app = dash.Dash(external_stylesheets=[dbc.themes.LUX])
 app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY])
-server = app.server  # Name Heroku will look for
 app.title = 'Covid-19 U.S. Dashboard'
+server = app.server  # Name Heroku will look for
 
 
 # ## (Row 1, Col 1) Minnesota Maps (Snapshots):
 
 # ### Map of Positivity Rates
 
-# In[24]:
+# In[23]:
 
 
 #===========================================
@@ -130,7 +130,7 @@ fig_infect_map.update_layout(legend=dict(
 
 # ### Map of 14-day Case Rates
 
-# In[25]:
+# In[24]:
 
 
 #===========================================
@@ -178,7 +178,7 @@ fig_school_map.update_layout(legend=dict(
 
 # ## (Row 1, Col 2)  County Trends
 
-# In[26]:
+# In[25]:
 
 
 #===========================================
@@ -321,7 +321,7 @@ def update_county_figure(county_values):
 
 # ## (Row 2, Col 1) U.S. Excess Deaths
 
-# In[27]:
+# In[26]:
 
 
 
@@ -417,7 +417,7 @@ def update_figure(state_values):
 
 # ## (Row 2, Col 2) Excess Deaths in Different States
 
-# In[28]:
+# In[27]:
 
 
 @app.callback(
@@ -510,7 +510,7 @@ def update_figure(state_values):
 
 # ##  (Row 2, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[29]:
+# In[28]:
 
 
 #===========================================
@@ -660,7 +660,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 2, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[30]:
+# In[29]:
 
 
 #===========================================
@@ -810,7 +810,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[31]:
+# In[30]:
 
 
 #===========================================
@@ -960,7 +960,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[32]:
+# In[31]:
 
 
 #===========================================
@@ -1110,7 +1110,7 @@ def update_figure(state_values,month_values):
     return fig
 
 
-# In[33]:
+# In[32]:
 
 
 modal_calc = html.Div(
@@ -1142,7 +1142,7 @@ modal_calc = html.Div(
             id="modal_calc",
         ),
     ],
-    style={"margin-left": "15px"}
+    style={"margin-left": "15px","margin-top": "15px"}
 )
 
 
@@ -1181,7 +1181,7 @@ modal_data = html.Div(
             id="modal_data",
         ),
     ],
-    style={"margin-left": "15px"}
+    style={"margin-left": "15px","margin-top": "15px"}
 )
 
 @app.callback(
@@ -1197,7 +1197,7 @@ def toggle_modal(n1, n2, is_open):
 
 # ## Call-backs and Control Utilities
 
-# In[34]:
+# In[33]:
 
 
 # County Dropdown
@@ -1266,7 +1266,7 @@ slider = html.P([
 
 # ## Define HTML
 
-# In[35]:
+# In[34]:
 
 
 #####################
@@ -1291,7 +1291,7 @@ navbar_footer = dbc.NavbarSimple(
     )
 
 
-# In[36]:
+# In[35]:
 
 
 #---------------------------------------------------------------------------
@@ -1394,7 +1394,7 @@ app.layout = dbc.Container(fluid=True, children=[
             dbc.Row(
             children=[html.H4("Observed vs Expected Deaths in:  "),state_dropdown_alt]),
             dbc.Col(dcc.Graph(id="excess_deaths")),
-            dbc.Row([modal_data, modal_calc]),
+            modal_data,
             html.Br(),html.Br(),
             dbc.Col(html.H4("New Cases (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
@@ -1413,7 +1413,7 @@ app.layout = dbc.Container(fluid=True, children=[
         dbc.Col(width=6, children=[           
             dbc.Col(html.H4("Excess Deaths by States")), 
             dbc.Col(dcc.Graph(id="excess_deaths_states")),
-            html.Br(),html.Br(),html.Br(),html.Br(),
+            modal_calc,html.Br(),html.Br(),
             dbc.Col(html.H4("New Hospitalizations (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="curhospital_raw"), label="Raw Data"),
@@ -1434,7 +1434,8 @@ app.layout = dbc.Container(fluid=True, children=[
 
 # # 3. Run Application
 
-# In[37]:
+# In[36]:
+
 
 if __name__ == '__main__':
     #app.run_server(debug=True, use_reloader=False)  # Jupyter
