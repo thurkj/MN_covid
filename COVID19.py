@@ -70,6 +70,7 @@ months = temp.unique().tolist()
 # Initialize Dash
 #app = dash.Dash(external_stylesheets=[dbc.themes.LUX])
 app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY])
+server = app.server
 app.title = 'Covid-19 U.S. Dashboard'
 
 
