@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[19]:
+# In[1]:
 
 
 # Load necessary packages
@@ -26,7 +26,7 @@ from dash.dependencies import Input, Output, State
 
 # # 1. Read Data
 
-# In[20]:
+# In[2]:
 
 
 #excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
@@ -34,17 +34,17 @@ from dash.dependencies import Input, Output, State
 #minnesota_data_today = pd.read_csv('s3://mncovid19data/minnesota_data_today.csv',index_col=False)
 #state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
 
-excess_deaths = pd.read_csv('excess_deaths.csv',index_col=False)
-minnesota_data = pd.read_csv('minnesota_data.csv',index_col=False)
-minnesota_data_today = pd.read_csv('minnesota_data_today.csv',index_col=False)
-state_df = pd.read_csv('state_df.csv',index_col=False)
+excess_deaths = pd.read_csv('./Data/excess_deaths.csv',index_col=False)
+minnesota_data = pd.read_csv('./Data/minnesota_data.csv',index_col=False)
+minnesota_data_today = pd.read_csv('./Data/minnesota_data_today.csv',index_col=False)
+state_df = pd.read_csv('./Data/state_df.csv',index_col=False)
 
 # Load json file
-with open('geojson-counties-fips.json') as response:  # Loads local file
+with open('./Data/geojson-counties-fips.json') as response:  # Loads local file
     counties = json.load(response)    
 
 
-# In[21]:
+# In[3]:
 
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
@@ -66,7 +66,7 @@ months = temp.unique().tolist()
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[22]:
+# In[4]:
 
 
 # Initialize Dash
@@ -80,7 +80,7 @@ server = app.server  # Name Heroku will look for
 
 # ### Map of Positivity Rates
 
-# In[23]:
+# In[5]:
 
 
 #===========================================
@@ -130,7 +130,7 @@ fig_infect_map.update_layout(legend=dict(
 
 # ### Map of 14-day Case Rates
 
-# In[24]:
+# In[6]:
 
 
 #===========================================
@@ -178,7 +178,7 @@ fig_school_map.update_layout(legend=dict(
 
 # ## (Row 1, Col 2)  County Trends
 
-# In[25]:
+# In[7]:
 
 
 #===========================================
@@ -321,7 +321,7 @@ def update_county_figure(county_values):
 
 # ## (Row 2, Col 1) U.S. Excess Deaths
 
-# In[26]:
+# In[8]:
 
 
 
@@ -417,7 +417,7 @@ def update_figure(state_values):
 
 # ## (Row 2, Col 2) Excess Deaths in Different States
 
-# In[27]:
+# In[9]:
 
 
 @app.callback(
@@ -508,9 +508,9 @@ def update_figure(state_values):
     return fig
 
 
-# ##  (Row 2, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
+# ##  (Row 3, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[28]:
+# In[10]:
 
 
 #===========================================
@@ -658,9 +658,9 @@ def update_figure(state_values,month_values):
     return fig
 
 
-# ## (Row 2, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
+# ## (Row 3, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[29]:
+# In[11]:
 
 
 #===========================================
@@ -808,9 +808,9 @@ def update_figure(state_values,month_values):
     return fig
 
 
-# ## (Row 3, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
+# ## (Row 4, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[30]:
+# In[12]:
 
 
 #===========================================
@@ -958,9 +958,9 @@ def update_figure(state_values,month_values):
     return fig
 
 
-# ## (Row 3, Col 2) Line Graph: Cumulative Deaths by State
+# ## (Row 4, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[31]:
+# In[13]:
 
 
 #===========================================
@@ -1110,7 +1110,7 @@ def update_figure(state_values,month_values):
     return fig
 
 
-# In[32]:
+# In[14]:
 
 
 modal_calc = html.Div(
@@ -1197,7 +1197,7 @@ def toggle_modal(n1, n2, is_open):
 
 # ## Call-backs and Control Utilities
 
-# In[33]:
+# In[15]:
 
 
 # County Dropdown
@@ -1248,7 +1248,8 @@ state_dropdown_alt = html.P([
             ], style = {'height': '20px',
                         'width' : '25%',
                         'fontSize' : '15px',
-                        'display': 'inline-block'})
+                        'display': 'inline-block',
+                        'padding-left' : '10px'})
 
 # range slider
 slider = html.P([
@@ -1266,7 +1267,7 @@ slider = html.P([
 
 # ## Define HTML
 
-# In[34]:
+# In[16]:
 
 
 #####################
@@ -1291,7 +1292,7 @@ navbar_footer = dbc.NavbarSimple(
     )
 
 
-# In[35]:
+# In[17]:
 
 
 #---------------------------------------------------------------------------
@@ -1434,11 +1435,11 @@ app.layout = dbc.Container(fluid=True, children=[
 
 # # 3. Run Application
 
-# In[36]:
+# In[18]:
 
 
 if __name__ == '__main__':
     #app.run_server(debug=True, use_reloader=False)  # Jupyter
-    app.run_server(debug=True,host='0.0.0.0')    # Use this line prior to heroku deployment
+    app.run_server(debug=False,host='0.0.0.0')    # Use this line prior to heroku deployment
     #application.run(debug=False, port=8080) # Use this line for AWS
 
