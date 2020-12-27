@@ -98,16 +98,18 @@ df = minnesota_data_today.dropna(subset=['infect'])
 fig_infect_map = px.choropleth(df, geojson=counties, locations='FIPS', color='infect',
                            color_discrete_map={
                             'Less than 5%':'lightyellow',
-                            'Between 5% and 10%':'yellow',
-                            'Between 10% and 15%':'orange',
-                            'Between 15% and 20%':'red',
-                            'Greater than 20%':'black'},
+                            'Between 5% and 15%':'yellow',
+                            'Between 15% and 30%':'orange',
+                            'Between 30% and 50%':'red',
+                            'Between 50% and 70%':'darkred',
+                            'Greater than 70%':'black'},
                            category_orders = {
                             'infect':['Less than 5%',
-                            'Between 5% and 10%',
-                            'Between 10% and 15%',
-                            'Between 15% and 20%',
-                            'Greater than 20%'
+                            'Between 5% and 15%',
+                            'Between 15% and 30%',
+                            'Between 30% and 50%',
+                            'Between 50% and 70%',
+                            'Greater than 70%'
                             ]},
                            projection = "mercator",
                            labels={'infect':'Percent Infected:'},
