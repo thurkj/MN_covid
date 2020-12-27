@@ -1118,7 +1118,7 @@ modal_calc = html.Div(
         dbc.Button("Calculating Expected Deaths", id="open_calc"),
         dbc.Modal(
             [
-                dbc.ModalHeader("Intuitive Primer on Calculating Excess Deaths"),
+                dbc.ModalHeader("Intuitive Primer on Calculating Expected Deaths"),
                 dbc.ModalBody(
                 dcc.Markdown(
                             f"""
