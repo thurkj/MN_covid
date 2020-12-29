@@ -29,15 +29,15 @@ from dash.dependencies import Input, Output, State
 # In[2]:
 
 
-#excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
-#minnesota_data = pd.read_csv('s3://mncovid19data/minnesota_data.csv',index_col=False)
-#minnesota_data_today = pd.read_csv('s3://mncovid19data/minnesota_data_today.csv',index_col=False)
-#state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
+excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
+minnesota_data = pd.read_csv('s3://mncovid19data/minnesota_data.csv',index_col=False)
+minnesota_data_today = pd.read_csv('s3://mncovid19data/minnesota_data_today.csv',index_col=False)
+state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
 
-excess_deaths = pd.read_csv('./Data/excess_deaths.csv',index_col=False)
-minnesota_data = pd.read_csv('./Data/minnesota_data.csv',index_col=False)
-minnesota_data_today = pd.read_csv('./Data/minnesota_data_today.csv',index_col=False)
-state_df = pd.read_csv('./Data/state_df.csv',index_col=False)
+#excess_deaths = pd.read_csv('./Data/excess_deaths.csv',index_col=False)
+#minnesota_data = pd.read_csv('./Data/minnesota_data.csv',index_col=False)
+#minnesota_data_today = pd.read_csv('./Data/minnesota_data_today.csv',index_col=False)
+#state_df = pd.read_csv('./Data/state_df.csv',index_col=False)
 
 # Load json file
 with open('./Data/geojson-counties-fips.json') as response:  # Loads local file
