@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[35]:
+# In[50]:
 
 
 # Load necessary packages
@@ -26,7 +26,7 @@ from dash.dependencies import Input, Output, State
 
 # # 1. Read Data
 
-# In[36]:
+# In[51]:
 
 
 excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
@@ -37,7 +37,7 @@ with open('./Data/geojson-counties-fips.json') as response:  # Loads local file
     counties = json.load(response)    
 
 
-# In[37]:
+# In[52]:
 
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
@@ -58,7 +58,7 @@ months = temp.unique().tolist()
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[38]:
+# In[53]:
 
 
 # Initialize Dash
@@ -70,7 +70,7 @@ server = app.server  # Name Heroku will look for
 
 # ## (Row 2, Col 1) U.S. Excess Deaths
 
-# In[39]:
+# In[54]:
 
 
 
@@ -166,7 +166,7 @@ def update_figure(state_values):
 
 # ## (Row 2, Col 2) Excess Deaths in Different States
 
-# In[40]:
+# In[55]:
 
 
 @app.callback(
@@ -259,7 +259,7 @@ def update_figure(state_values):
 
 # ##  (Row 3, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[41]:
+# In[56]:
 
 
 #===========================================
@@ -409,7 +409,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[42]:
+# In[57]:
 
 
 #===========================================
@@ -559,7 +559,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 4, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[43]:
+# In[58]:
 
 
 #===========================================
@@ -709,7 +709,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 4, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[44]:
+# In[59]:
 
 
 #===========================================
@@ -859,7 +859,7 @@ def update_figure(state_values,month_values):
     return fig
 
 
-# In[45]:
+# In[60]:
 
 
 modal_calc = html.Div(
@@ -946,7 +946,7 @@ def toggle_modal(n1, n2, is_open):
 
 # ## Call-backs and Control Utilities
 
-# In[46]:
+# In[61]:
 
 
 # Dropdown
@@ -993,7 +993,7 @@ slider = html.P([
 
 # ## Define HTML
 
-# In[47]:
+# In[62]:
 
 
 #####################
@@ -1018,7 +1018,7 @@ navbar_footer = dbc.NavbarSimple(
     )
 
 
-# In[48]:
+# In[63]:
 
 
 #---------------------------------------------------------------------------
@@ -1038,13 +1038,13 @@ states, periods, and/or standardize the statistics by population.
 # App Layout
 app.layout = dbc.Container(fluid=True, children=[
     ## Top
-    navbar, 
-    html.Br(),html.Br(),html.Br(),html.Br(),
+#    navbar, 
+#    html.Br(),html.Br(),html.Br(),html.Br(),
     
     ## 
     dbc.Row([
         dbc.Col(width=12, children=[
-        state_desc, state_dropdown, slider,
+        state_dropdown, slider,
         html.Br(),html.Br()
         ]),
 
@@ -1086,14 +1086,14 @@ app.layout = dbc.Container(fluid=True, children=[
             ]),
         ]),
     ], no_gutters=False),
-    html.Br(),html.Br(),
-    navbar_footer
+#    html.Br(),html.Br(),
+#    navbar_footer
 ])
 
 
 # # 3. Run Application
 
-# In[49]:
+# In[64]:
 
 
 if __name__ == '__main__':
