@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[50]:
+# In[1]:
 
 
 # Load necessary packages
@@ -26,7 +26,7 @@ from dash.dependencies import Input, Output, State
 
 # # 1. Read Data
 
-# In[51]:
+# In[2]:
 
 
 excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
@@ -37,7 +37,7 @@ with open('./Data/geojson-counties-fips.json') as response:  # Loads local file
     counties = json.load(response)    
 
 
-# In[52]:
+# In[3]:
 
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
@@ -58,7 +58,7 @@ months = temp.unique().tolist()
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[53]:
+# In[4]:
 
 
 # Initialize Dash
@@ -70,7 +70,7 @@ server = app.server  # Name Heroku will look for
 
 # ## (Row 2, Col 1) U.S. Excess Deaths
 
-# In[54]:
+# In[5]:
 
 
 
@@ -166,7 +166,7 @@ def update_figure(state_values):
 
 # ## (Row 2, Col 2) Excess Deaths in Different States
 
-# In[55]:
+# In[6]:
 
 
 @app.callback(
@@ -259,7 +259,7 @@ def update_figure(state_values):
 
 # ##  (Row 3, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[56]:
+# In[7]:
 
 
 #===========================================
@@ -409,7 +409,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[57]:
+# In[8]:
 
 
 #===========================================
@@ -559,7 +559,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 4, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[58]:
+# In[9]:
 
 
 #===========================================
@@ -709,7 +709,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 4, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[59]:
+# In[10]:
 
 
 #===========================================
@@ -859,7 +859,7 @@ def update_figure(state_values,month_values):
     return fig
 
 
-# In[60]:
+# In[11]:
 
 
 modal_calc = html.Div(
@@ -946,7 +946,7 @@ def toggle_modal(n1, n2, is_open):
 
 # ## Call-backs and Control Utilities
 
-# In[61]:
+# In[12]:
 
 
 # Dropdown
@@ -993,7 +993,7 @@ slider = html.P([
 
 # ## Define HTML
 
-# In[62]:
+# In[13]:
 
 
 #####################
@@ -1018,7 +1018,7 @@ navbar_footer = dbc.NavbarSimple(
     )
 
 
-# In[63]:
+# In[15]:
 
 
 #---------------------------------------------------------------------------
@@ -1047,57 +1047,60 @@ app.layout = dbc.Container(fluid=True, children=[
         state_dropdown, slider,
         html.Br(),html.Br()
         ]),
-
-        ### left plots
-        dbc.Col(width=6, children=[   
+    ]),
+    
+    dbc.Row([
+        dbc.Col(width=12, children=[   
             dbc.Row(
             children=[html.H4("Observed vs Expected Deaths in:  "),state_dropdown_alt]),
             dbc.Col(dcc.Graph(id="excess_deaths")),
-            modal_data,
-            html.Br(),html.Br(),
+            modal_data,html.Br(),html.Br(),
+            
+            dbc.Col(html.H4("Excess Deaths by States")), 
+            dbc.Col(dcc.Graph(id="excess_deaths_states")),
+            modal_calc,html.Br(),html.Br(),
+            
             dbc.Col(html.H4("New Cases (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="positive_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="positive_pc"), label="Per 10,000")
-            ]),
-            html.Br(),html.Br(),
-            dbc.Col(html.H4("New Deaths (7-day Moving Avg.)")),
-            dbc.Tabs(className="nav", children=[
-                dbc.Tab(dcc.Graph(id="newdeaths_raw"), label="Raw Data"),
-                dbc.Tab(dcc.Graph(id="newdeaths_pc"), label="Per 10,000")
-            ]),
-        ]),
-                
-        ### right plots
-        dbc.Col(width=6, children=[           
-            dbc.Col(html.H4("Excess Deaths by States")), 
-            dbc.Col(dcc.Graph(id="excess_deaths_states")),
-            modal_calc,html.Br(),html.Br(),
+            ]),html.Br(),html.Br(),
+            
             dbc.Col(html.H4("New Hospitalizations (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="curhospital_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="curhospital_pc"), label="Per 10,000")
-            ]),
-            html.Br(),html.Br(),
+            ]),html.Br(),html.Br(),
+            
+            dbc.Col(html.H4("New Deaths (7-day Moving Avg.)")),
+            dbc.Tabs(className="nav", children=[
+                dbc.Tab(dcc.Graph(id="newdeaths_raw"), label="Raw Data"),
+                dbc.Tab(dcc.Graph(id="newdeaths_pc"), label="Per 10,000")
+            ]),html.Br(),html.Br(),
+            
             dbc.Col(html.H4("Total Deaths")),
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="totdeaths_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="totdeaths_pc"), label="Per 10,000")
             ]),
-        ]),
-    ], no_gutters=False),
-#    html.Br(),html.Br(),
-#    navbar_footer
+        ])
+    ], no_gutters=False)
 ])
 
 
 # # 3. Run Application
 
-# In[64]:
+# In[16]:
 
 
 if __name__ == '__main__':
     #app.run_server(debug=True, use_reloader=False)  # Jupyter
     app.run_server(debug=False,host='0.0.0.0')    # Use this line prior to heroku deployment
     #application.run(debug=False, port=8080) # Use this line for AWS
+
+
+# In[ ]:
+
+
+
 
