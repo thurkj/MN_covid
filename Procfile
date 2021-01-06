@@ -1,1 +1,1 @@
-web: gunicorn CTY_COVID19:server --log-file=-
+web: gunicorn CTY_COVID19:server --timeout=70 --log-file=-
