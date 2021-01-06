@@ -1069,7 +1069,7 @@ state_dropdown = html.P([
             id='state-dropdown',
             options=[{'label': i, 'value': i} for i in state_df['state'].unique().tolist()],
             multi=True,
-            value=['MN','WI','IA','ND','SD'],
+            value=['CA','TX','FL','GA','MN','WI','ND','SD'],
             searchable= True)
             ], style = {'width' : '80%',
                         'fontSize' : '20px',
