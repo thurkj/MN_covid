@@ -33,7 +33,7 @@ minnesota_data = pd.read_csv('s3://mncovid19data/minnesota_data.csv',index_col=F
 minnesota_data_today = pd.read_csv('s3://mncovid19data/minnesota_data_today.csv',index_col=False)
 
 # Load json file
-with open('./Data/geojson-counties-fips.json') as response:  # Loads local file
+with open('geojson-counties-fips.json') as response:  # Loads local file
     counties = json.load(response)    
 
 
