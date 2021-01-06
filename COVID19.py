@@ -935,7 +935,7 @@ def update_figure(state_values):
     # Convert to Percent
     dff['people_total'] = 100*dff['people_total']/dff['POP'] 
         
-    fig = px.bar(dff, x='state', y='people_total', text='people_total', labels={'people_total':'Total Vaccinated','state':'State'})
+    fig = px.bar(dff, x='state', y='people_total', text='people_total', labels={'people_total':'Percent of Total Population Vaccinated','state':'State'})
       
     fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
     fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
