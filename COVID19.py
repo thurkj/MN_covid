@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[65]:
 
 
 # Load necessary packages
@@ -26,18 +26,19 @@ from dash.dependencies import Input, Output, State
 
 # # 1. Read Data
 
-# In[2]:
+# In[66]:
 
 
 excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
 state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
+vaccines = pd.read_csv('s3://mncovid19data/vaccines.csv',index_col=False)
 
 # Load json file
 with open('./Data/geojson-counties-fips.json') as response:  # Loads local file
     counties = json.load(response)    
 
 
-# In[3]:
+# In[67]:
 
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
@@ -58,7 +59,7 @@ months = temp.unique().tolist()
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[4]:
+# In[68]:
 
 
 # Initialize Dash
@@ -70,7 +71,7 @@ server = app.server  # Name Heroku will look for
 
 # ## (Row 2, Col 1) U.S. Excess Deaths
 
-# In[5]:
+# In[69]:
 
 
 
@@ -166,7 +167,7 @@ def update_figure(state_values):
 
 # ## (Row 2, Col 2) Excess Deaths in Different States
 
-# In[6]:
+# In[70]:
 
 
 @app.callback(
@@ -259,7 +260,7 @@ def update_figure(state_values):
 
 # ##  (Row 3, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[7]:
+# In[71]:
 
 
 #===========================================
@@ -409,7 +410,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[8]:
+# In[72]:
 
 
 #===========================================
@@ -559,7 +560,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 4, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[9]:
+# In[73]:
 
 
 #===========================================
@@ -709,7 +710,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 4, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[10]:
+# In[74]:
 
 
 #===========================================
@@ -859,7 +860,119 @@ def update_figure(state_values,month_values):
     return fig
 
 
-# In[11]:
+# In[75]:
+
+
+#===========================================
+# Vaccinations - Numbers
+#===========================================
+@app.callback(
+    Output('vaccines_raw', 'figure'),
+    [Input('state-dropdown', 'value')])
+    
+# Update Figure
+def update_figure(state_values):
+
+    if state_values is None:
+        dff = vaccines.copy()  
+    else:
+        if not isinstance(state_values, list): state_values = [state_values]
+        dff = vaccines.loc[vaccines['state'].isin(state_values)]
+    
+    fig = px.bar(dff, x='state', y='people_total', text='people_total', labels={'people_total':'Total Vaccinated','state':'State'})
+      
+    fig.update_traces(texttemplate='%{text:.2s}', textposition='outside')
+    fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
+
+    # Update remaining layout properties
+    fig.update_layout(
+        margin={"r":0,"t":10,"l":0,"b":0},
+        hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
+        hoverlabel=dict(
+            bgcolor = 'white',
+            font_size=16),
+
+        xaxis=dict(
+            zeroline=True,
+            showgrid=False,  # Removes X-axis grid lines 
+            fixedrange = True
+            ),
+        yaxis=dict(
+            zeroline=True, 
+            showgrid=False,  # Removes Y-axis grid lines
+            fixedrange = True
+            ),
+        annotations=[  # Source annotation
+                        dict(xref='paper',
+                            yref='paper',
+                            x=0.5, y=1.0,
+                            showarrow=False,
+                            text ='Source: State Departments of Health')
+                    ]
+    )
+        
+    fig.update_xaxes(showline=True, linewidth=2, linecolor='black')
+    fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
+    return fig
+
+#===========================================
+# Vaccinations - % of Total
+#===========================================
+@app.callback(
+    Output('vaccines_pc', 'figure'),
+    [Input('state-dropdown', 'value')])
+    
+# Update Figure
+def update_figure(state_values):
+    
+    if state_values is None:
+        dff = vaccines.copy()  
+        
+    else:
+        if not isinstance(state_values, list): state_values = [state_values]
+        dff = vaccines.loc[vaccines['state'].isin(state_values)]
+    
+    # Convert to Percent
+    dff['people_total'] = 100*dff['people_total']/dff['POP'] 
+        
+    fig = px.bar(dff, x='state', y='people_total', text='people_total', labels={'people_total':'Total Vaccinated','state':'State'})
+      
+    fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+    fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
+    
+    # Update remaining layout properties
+    fig.update_layout(
+        margin={"r":0,"t":10,"l":0,"b":0},
+        hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
+        hoverlabel=dict(
+            bgcolor = 'white',
+            font_size=16),
+
+        xaxis=dict(
+            zeroline=True,
+            showgrid=False,  # Removes X-axis grid lines 
+            fixedrange = True
+            ),
+        yaxis=dict(
+            zeroline=True, 
+            showgrid=False,  # Removes Y-axis grid lines
+            fixedrange = True
+            ),
+        annotations=[  # Source annotation
+                        dict(xref='paper',
+                            yref='paper',
+                            x=0.5, y=1.0,
+                            showarrow=False,
+                            text ='Source: State Departments of Health')
+                    ]
+    )
+        
+    fig.update_xaxes(showline=True, linewidth=2, linecolor='black')
+    fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
+    return fig
+
+
+# In[76]:
 
 
 modal_calc = html.Div(
@@ -946,7 +1059,7 @@ def toggle_modal(n1, n2, is_open):
 
 # ## Call-backs and Control Utilities
 
-# In[12]:
+# In[77]:
 
 
 # Dropdown
@@ -993,7 +1106,7 @@ slider = html.P([
 
 # ## Define HTML
 
-# In[13]:
+# In[78]:
 
 
 #####################
@@ -1018,7 +1131,7 @@ navbar_footer = dbc.NavbarSimple(
     )
 
 
-# In[15]:
+# In[79]:
 
 
 #---------------------------------------------------------------------------
@@ -1059,6 +1172,12 @@ app.layout = dbc.Container(fluid=True, children=[
             dbc.Col(html.H4("Excess Deaths by States")), 
             dbc.Col(dcc.Graph(id="excess_deaths_states")),
             modal_calc,html.Br(),html.Br(),
+
+            dbc.Col(html.H4("Vaccination Progress")), 
+            dbc.Tabs(className="nav", children=[
+                dbc.Tab(dcc.Graph(id="vaccines_raw"), label="Raw Data"),
+                dbc.Tab(dcc.Graph(id="vaccines_pc"), label="% of Total Population")
+            ]),html.Br(),html.Br(),
             
             dbc.Col(html.H4("New Cases (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
@@ -1090,17 +1209,11 @@ app.layout = dbc.Container(fluid=True, children=[
 
 # # 3. Run Application
 
-# In[16]:
+# In[80]:
 
 
 if __name__ == '__main__':
     #app.run_server(debug=True, use_reloader=False)  # Jupyter
     app.run_server(debug=False,host='0.0.0.0')    # Use this line prior to heroku deployment
     #application.run(debug=False, port=8080) # Use this line for AWS
-
-
-# In[ ]:
-
-
-
 
