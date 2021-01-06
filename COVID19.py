@@ -34,7 +34,7 @@ state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
 vaccines = pd.read_csv('s3://mncovid19data/vaccines.csv',index_col=False)
 
 # Load json file
-with open('./Data/geojson-counties-fips.json') as response:  # Loads local file
+with open('geojson-counties-fips.json') as response:  # Loads local file
     counties = json.load(response)    
 
 
@@ -935,7 +935,7 @@ def update_figure(state_values):
     # Convert to Percent
     dff['people_total'] = 100*dff['people_total']/dff['POP'] 
         
-    fig = px.bar(dff, x='state', y='people_total', text='people_total', labels={'people_total':'Percent of Total Population Vaccinated','state':'State'})
+    fig = px.bar(dff, x='state', y='people_total', text='people_total', labels={'people_total':'Total Vaccinated','state':'State'})
       
     fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
     fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
@@ -1069,7 +1069,7 @@ state_dropdown = html.P([
             id='state-dropdown',
             options=[{'label': i, 'value': i} for i in state_df['state'].unique().tolist()],
             multi=True,
-            value=['CA','TX','FL','GA','MN','WI','ND','SD'],
+            value=['MN','WI','IA','ND','SD'],
             searchable= True)
             ], style = {'width' : '80%',
                         'fontSize' : '20px',
