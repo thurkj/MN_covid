@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[17]:
 
 
 # Load necessary packages
@@ -26,7 +26,7 @@ from dash.dependencies import Input, Output, State
 
 # # 1. Read Data
 
-# In[2]:
+# In[18]:
 
 
 excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
@@ -34,7 +34,7 @@ state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
 vaccines = pd.read_csv('s3://mncovid19data/vaccines.csv',index_col=False)
 
 
-# In[3]:
+# In[19]:
 
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
@@ -55,7 +55,7 @@ months = temp.unique().tolist()
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[4]:
+# In[20]:
 
 
 # Initialize Dash
@@ -67,7 +67,7 @@ server = app.server  # Name Heroku will look for
 
 # ## (Row 2, Col 1) U.S. Excess Deaths
 
-# In[5]:
+# In[21]:
 
 
 
@@ -163,7 +163,7 @@ def update_figure(state_values):
 
 # ## (Row 2, Col 2) Excess Deaths in Different States
 
-# In[6]:
+# In[22]:
 
 
 @app.callback(
@@ -256,7 +256,7 @@ def update_figure(state_values):
 
 # ##  (Row 3, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[7]:
+# In[23]:
 
 
 #===========================================
@@ -406,7 +406,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[8]:
+# In[24]:
 
 
 #===========================================
@@ -556,7 +556,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 4, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[9]:
+# In[25]:
 
 
 #===========================================
@@ -706,7 +706,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 4, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[10]:
+# In[26]:
 
 
 #===========================================
@@ -856,7 +856,7 @@ def update_figure(state_values,month_values):
     return fig
 
 
-# In[11]:
+# In[27]:
 
 
 #===========================================
@@ -875,7 +875,10 @@ def update_figure(state_values):
         if not isinstance(state_values, list): state_values = [state_values]
         dff = vaccines.loc[vaccines['state'].isin(state_values)]
     
-    fig = px.bar(dff, x='state', y='people_total', text='people_total', labels={'people_total':'Total Vaccinated','state':'State'})
+    fig = px.bar(dff, x='state', 
+                 y='doses_admin_total', 
+                 text='doses_admin_total', 
+                 labels={'doses_admin_total':'Total Vaccinated','state':'State'})
       
     fig.update_traces(texttemplate='%{text:.2s}', textposition='outside')
     fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
@@ -929,11 +932,11 @@ def update_figure(state_values):
         dff = vaccines.loc[vaccines['state'].isin(state_values)]
     
     # Convert to Percent
-    dff['people_total'] = 100*dff['people_total']/dff['POP'] 
+    dff['people_total'] = 100*dff['doses_admin_total']/dff['POP'] 
         
-    fig = px.bar(dff, x='state', y='people_total', 
-                 text='people_total', 
-                 labels={'people_total':'Percent of Total Population Vaccinated','state':'State'})
+    fig = px.bar(dff, x='state', y='doses_admin_total', 
+                 text='doses_admin_total', 
+                 labels={'doses_admin_total':'Percent of Total Population Vaccinated','state':'State'})
 
     fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
     fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
@@ -970,7 +973,7 @@ def update_figure(state_values):
     return fig
 
 
-# In[12]:
+# In[28]:
 
 
 modal_calc = html.Div(
@@ -1057,7 +1060,7 @@ def toggle_modal(n1, n2, is_open):
 
 # ## Call-backs and Control Utilities
 
-# In[13]:
+# In[29]:
 
 
 # Dropdown
@@ -1104,7 +1107,7 @@ slider = html.P([
 
 # ## Define HTML
 
-# In[14]:
+# In[30]:
 
 
 #####################
@@ -1129,7 +1132,7 @@ navbar_footer = dbc.NavbarSimple(
     )
 
 
-# In[15]:
+# In[31]:
 
 
 #---------------------------------------------------------------------------
@@ -1207,7 +1210,7 @@ app.layout = dbc.Container(fluid=True, children=[
 
 # # 3. Run Application
 
-# In[16]:
+# In[32]:
 
 
 if __name__ == '__main__':
