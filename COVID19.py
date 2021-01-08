@@ -932,7 +932,7 @@ def update_figure(state_values):
         dff = vaccines.loc[vaccines['state'].isin(state_values)]
     
     # Convert to Percent
-    dff['people_total'] = 100*dff['doses_admin_total']/dff['POP'] 
+    dff['doses_admin_total'] = 100*dff['doses_admin_total']/dff['POP'] 
         
     fig = px.bar(dff, x='state', y='doses_admin_total', 
                  text='doses_admin_total', 
