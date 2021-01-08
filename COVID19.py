@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[65]:
+# In[1]:
 
 
 # Load necessary packages
@@ -26,19 +26,15 @@ from dash.dependencies import Input, Output, State
 
 # # 1. Read Data
 
-# In[66]:
+# In[2]:
 
 
 excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
 state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
 vaccines = pd.read_csv('s3://mncovid19data/vaccines.csv',index_col=False)
 
-# Load json file
-with open('geojson-counties-fips.json') as response:  # Loads local file
-    counties = json.load(response)    
 
-
-# In[67]:
+# In[3]:
 
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
@@ -59,7 +55,7 @@ months = temp.unique().tolist()
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[68]:
+# In[4]:
 
 
 # Initialize Dash
@@ -71,7 +67,7 @@ server = app.server  # Name Heroku will look for
 
 # ## (Row 2, Col 1) U.S. Excess Deaths
 
-# In[69]:
+# In[5]:
 
 
 
@@ -167,7 +163,7 @@ def update_figure(state_values):
 
 # ## (Row 2, Col 2) Excess Deaths in Different States
 
-# In[70]:
+# In[6]:
 
 
 @app.callback(
@@ -260,7 +256,7 @@ def update_figure(state_values):
 
 # ##  (Row 3, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[71]:
+# In[7]:
 
 
 #===========================================
@@ -410,7 +406,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[72]:
+# In[8]:
 
 
 #===========================================
@@ -560,7 +556,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 4, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[73]:
+# In[9]:
 
 
 #===========================================
@@ -710,7 +706,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 4, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[74]:
+# In[10]:
 
 
 #===========================================
@@ -860,7 +856,7 @@ def update_figure(state_values,month_values):
     return fig
 
 
-# In[75]:
+# In[11]:
 
 
 #===========================================
@@ -935,8 +931,10 @@ def update_figure(state_values):
     # Convert to Percent
     dff['people_total'] = 100*dff['people_total']/dff['POP'] 
         
-    fig = px.bar(dff, x='state', y='people_total', text='people_total', labels={'people_total':'Total Vaccinated','state':'State'})
-      
+    fig = px.bar(dff, x='state', y='people_total', 
+                 text='people_total', 
+                 labels={'people_total':'Percent of Total Population Vaccinated','state':'State'})
+
     fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
     fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
     
@@ -972,7 +970,7 @@ def update_figure(state_values):
     return fig
 
 
-# In[76]:
+# In[12]:
 
 
 modal_calc = html.Div(
@@ -1059,7 +1057,7 @@ def toggle_modal(n1, n2, is_open):
 
 # ## Call-backs and Control Utilities
 
-# In[77]:
+# In[13]:
 
 
 # Dropdown
@@ -1069,7 +1067,7 @@ state_dropdown = html.P([
             id='state-dropdown',
             options=[{'label': i, 'value': i} for i in state_df['state'].unique().tolist()],
             multi=True,
-            value=['MN','WI','IA','ND','SD'],
+            value=['CA','TX','FL','GA','MN','WI','ND','SD'],
             searchable= True)
             ], style = {'width' : '80%',
                         'fontSize' : '20px',
@@ -1106,7 +1104,7 @@ slider = html.P([
 
 # ## Define HTML
 
-# In[78]:
+# In[14]:
 
 
 #####################
@@ -1131,7 +1129,7 @@ navbar_footer = dbc.NavbarSimple(
     )
 
 
-# In[79]:
+# In[15]:
 
 
 #---------------------------------------------------------------------------
@@ -1209,7 +1207,7 @@ app.layout = dbc.Container(fluid=True, children=[
 
 # # 3. Run Application
 
-# In[80]:
+# In[16]:
 
 
 if __name__ == '__main__':
