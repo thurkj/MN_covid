@@ -1142,7 +1142,7 @@ navbar_footer = dbc.NavbarSimple(
 # App Layout
 app.layout = dbc.Container(fluid=True, children=[
     ## Top
-    html.H3(children="Data Retrieved " + today),
+    html.Label(children="Data Retrieved " + today),
     html.Br(),
     
     ## 
