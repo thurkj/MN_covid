@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[17]:
+# In[20]:
 
 
 # Load necessary packages
@@ -26,7 +26,7 @@ from dash.dependencies import Input, Output, State
 
 # # 1. Read Data
 
-# In[18]:
+# In[21]:
 
 
 excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
@@ -34,7 +34,7 @@ state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
 vaccines = pd.read_csv('s3://mncovid19data/vaccines.csv',index_col=False)
 
 
-# In[19]:
+# In[22]:
 
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
@@ -55,7 +55,7 @@ months = temp.unique().tolist()
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[20]:
+# In[23]:
 
 
 # Initialize Dash
@@ -67,7 +67,7 @@ server = app.server  # Name Heroku will look for
 
 # ## (Row 2, Col 1) U.S. Excess Deaths
 
-# In[21]:
+# In[24]:
 
 
 
@@ -163,7 +163,7 @@ def update_figure(state_values):
 
 # ## (Row 2, Col 2) Excess Deaths in Different States
 
-# In[22]:
+# In[25]:
 
 
 @app.callback(
@@ -256,7 +256,7 @@ def update_figure(state_values):
 
 # ##  (Row 3, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[23]:
+# In[26]:
 
 
 #===========================================
@@ -406,7 +406,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[24]:
+# In[27]:
 
 
 #===========================================
@@ -556,7 +556,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 4, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[25]:
+# In[28]:
 
 
 #===========================================
@@ -706,7 +706,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 4, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[26]:
+# In[29]:
 
 
 #===========================================
@@ -856,7 +856,7 @@ def update_figure(state_values,month_values):
     return fig
 
 
-# In[27]:
+# In[30]:
 
 
 #===========================================
@@ -973,7 +973,7 @@ def update_figure(state_values):
     return fig
 
 
-# In[28]:
+# In[31]:
 
 
 modal_calc = html.Div(
@@ -1060,7 +1060,7 @@ def toggle_modal(n1, n2, is_open):
 
 # ## Call-backs and Control Utilities
 
-# In[29]:
+# In[32]:
 
 
 # Dropdown
@@ -1107,7 +1107,7 @@ slider = html.P([
 
 # ## Define HTML
 
-# In[30]:
+# In[33]:
 
 
 #####################
@@ -1132,28 +1132,18 @@ navbar_footer = dbc.NavbarSimple(
     )
 
 
-# In[31]:
+# In[34]:
 
 
 #---------------------------------------------------------------------------
 # DASH App formating
 #---------------------------------------------------------------------------
-header = html.H1(children="COVID-19 TRENDS (as of " + today + ")")
-
-state_desc = dcc.Markdown(
-            f"""
-The following graphs depict Covid-19 trends. The graphs are interactive; 
-e.g., hover your cursor over a data-series to observe specific values.
-Select midwestern states are included by default but you can modify the analysis by choosing a different subset of
-states, periods, and/or standardize the statistics by population.
-            """   
-)
             
 # App Layout
 app.layout = dbc.Container(fluid=True, children=[
     ## Top
-#    navbar, 
-#    html.Br(),html.Br(),html.Br(),html.Br(),
+    html.H3(children="Data Retrieved " + today),
+    html.Br(),
     
     ## 
     dbc.Row([
@@ -1210,11 +1200,17 @@ app.layout = dbc.Container(fluid=True, children=[
 
 # # 3. Run Application
 
-# In[32]:
+# In[35]:
 
 
 if __name__ == '__main__':
     #app.run_server(debug=True, use_reloader=False)  # Jupyter
     app.run_server(debug=False,host='0.0.0.0')    # Use this line prior to heroku deployment
     #application.run(debug=False, port=8080) # Use this line for AWS
+
+
+# In[ ]:
+
+
+
 
