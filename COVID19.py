@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[20]:
+# In[214]:
 
 
 # Load necessary packages
@@ -26,15 +26,16 @@ from dash.dependencies import Input, Output, State
 
 # # 1. Read Data
 
-# In[21]:
+# In[215]:
 
 
 excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
+excess_deaths_age = pd.read_csv('s3://mncovid19data/excess_deaths_age.csv',index_col=False)
 state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
 vaccines = pd.read_csv('s3://mncovid19data/vaccines.csv',index_col=False)
 
 
-# In[22]:
+# In[216]:
 
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
@@ -55,7 +56,7 @@ months = temp.unique().tolist()
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[23]:
+# In[217]:
 
 
 # Initialize Dash
@@ -67,7 +68,7 @@ server = app.server  # Name Heroku will look for
 
 # ## (Row 2, Col 1) U.S. Excess Deaths
 
-# In[24]:
+# In[218]:
 
 
 
@@ -163,7 +164,7 @@ def update_figure(state_values):
 
 # ## (Row 2, Col 2) Excess Deaths in Different States
 
-# In[25]:
+# In[219]:
 
 
 @app.callback(
@@ -254,9 +255,83 @@ def update_figure(state_values):
     return fig
 
 
+# ## Excess Deaths by Age Group
+
+# In[220]:
+
+
+@app.callback(
+    Output('excess_deaths_age', 'figure'),
+    [Input('state-dropdown_age', 'value')],
+    [Input('state-dropdown_age_group', 'value')])
+
+# Update Figure
+def update_figure(state_values,age_group):
+
+    dff = excess_deaths_age.loc[(excess_deaths_age['state'].isin([state_values])&excess_deaths_age['age_group'].isin([age_group]))]
+    dff.set_index('week',inplace=True)
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x = dff.index,
+            y = dff['expected_deaths'],
+            name = 'Expected',
+            mode='lines',
+            marker_color='orange',
+            opacity=0.9,
+            #hovertemplate = '<extra></extra>County: ' + column + '<br>Date: ' + pd.to_datetime(dff.index).strftime('%Y-%m-%d') +'<br>Value: %{y:.1f}'
+        )
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x = dff.index,
+            y = dff['observed_deaths'],
+            name = '2020-2021 Observed',
+            opacity=0.3,
+            marker_color='blue',
+            #hovertemplate = '<extra></extra>County: ' + column + '<br>Date: ' + pd.to_datetime(dff.index).strftime('%Y-%m-%d') +'<br>Value: %{y:.1f}'
+        )
+    )
+
+    # Update remaining layout properties
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=10, b=0),
+        hovermode='x unified',
+        plot_bgcolor='rgba(0,0,0,0)',
+        hoverlabel=dict(
+            bgcolor = 'white',
+            font_size=12),
+        xaxis=dict(
+            title="Week of Year",
+            zeroline=True,
+            showgrid=False,  # Removes X-axis grid lines 
+            fixedrange = True
+            ),
+        yaxis=dict(
+            title="Total Weekly Deaths",
+            zeroline=True, 
+            showgrid=False,  # Removes Y-axis grid lines
+            fixedrange = True
+            ),
+        annotations=[  # Source annotation
+                        dict(xref='paper',
+                            yref='paper',
+                            x=0.5, y=1.0,
+                            showarrow=False,
+                            text ="Source: National Center for Health Statistics.")
+                    ]
+    )
+
+    fig.update_xaxes(showline=True, linewidth=2, linecolor='black')
+    fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
+    return fig
+
+
 # ##  (Row 3, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[26]:
+# In[221]:
 
 
 #===========================================
@@ -265,11 +340,10 @@ def update_figure(state_values):
 
 @app.callback(
     Output('positive_raw', 'figure'),
-    [Input('state-dropdown', 'value')],
-    [Input('slider', 'value')])
+    [Input('state-dropdown', 'value')])
     
 # Update Figure
-def update_figure(state_values,month_values):
+def update_figure(state_values):
         
     if state_values is None:
         dff = state_df.copy()
@@ -281,9 +355,6 @@ def update_figure(state_values,month_values):
         temp = state_df.loc[state_df['state'].isin(state_values)]
                     
         dff = temp.pivot(index='date',columns='state',values='new_cases')        
-
-    # Filter by months
-    dff = dff.loc[dt.datetime.strptime(months[month_values[0]],"%B %Y") : dt.datetime.strptime(months[month_values[1]],"%B %Y")+ MonthEnd(1)]
 
     fig = go.Figure()
     for column in dff.columns.to_list():
@@ -334,11 +405,10 @@ def update_figure(state_values,month_values):
 
 @app.callback(
     Output('positive_pc', 'figure'),
-    [Input('state-dropdown', 'value')],
-    [Input('slider', 'value')])
+    [Input('state-dropdown', 'value')])
     
 # Update Figure
-def update_figure(state_values,month_values):
+def update_figure(state_values):
         
     if state_values is None:
         dff = state_df.copy()
@@ -356,9 +426,6 @@ def update_figure(state_values,month_values):
         temp['new_cases'] = 1e+4*temp['new_cases']/temp['POP'] 
             
         dff = temp.pivot(index='date',columns='state',values='new_cases')        
-
-    # Filter by months
-    dff = dff.loc[dt.datetime.strptime(months[month_values[0]],"%B %Y") : dt.datetime.strptime(months[month_values[1]],"%B %Y")+ MonthEnd(1)]
 
     fig = go.Figure()
     for column in dff.columns.to_list():
@@ -406,7 +473,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 3, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[27]:
+# In[222]:
 
 
 #===========================================
@@ -415,11 +482,10 @@ def update_figure(state_values,month_values):
 
 @app.callback(
     Output('curhospital_raw', 'figure'),
-    [Input('state-dropdown', 'value')],
-    [Input('slider', 'value')])
+    [Input('state-dropdown', 'value')])
     
 # Update Figure
-def update_figure(state_values,month_values):
+def update_figure(state_values):
 
     if state_values is None:
         dff = state_df.copy()
@@ -431,9 +497,6 @@ def update_figure(state_values,month_values):
         temp = state_df.loc[state_df['state'].isin(state_values)]
             
         dff = temp.pivot(index='date',columns='state',values='new_hospitalized')
-    
-    # Filter by months
-    dff = dff.loc[dt.datetime.strptime(months[month_values[0]],"%B %Y") : dt.datetime.strptime(months[month_values[1]],"%B %Y")+ MonthEnd(1)]
     
     fig = go.Figure()
     for column in dff.columns.to_list():
@@ -484,11 +547,10 @@ def update_figure(state_values,month_values):
 
 @app.callback(
     Output('curhospital_pc', 'figure'),
-    [Input('state-dropdown', 'value')],
-    [Input('slider', 'value')])
+    [Input('state-dropdown', 'value')])
     
 # Update Figure
-def update_figure(state_values,month_values):
+def update_figure(state_values):
 
     if state_values is None:
         dff = state_df.copy()
@@ -506,9 +568,6 @@ def update_figure(state_values,month_values):
         temp['new_hospitalized'] = 1e+4*temp['new_hospitalized']/temp['POP'] 
             
         dff = temp.pivot(index='date',columns='state',values='new_hospitalized')
-    
-    # Filter by months
-    dff = dff.loc[dt.datetime.strptime(months[month_values[0]],"%B %Y") : dt.datetime.strptime(months[month_values[1]],"%B %Y")+ MonthEnd(1)]
     
     fig = go.Figure()
     for column in dff.columns.to_list():
@@ -556,7 +615,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 4, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[28]:
+# In[223]:
 
 
 #===========================================
@@ -565,11 +624,10 @@ def update_figure(state_values,month_values):
 
 @app.callback(
     Output('newdeaths_raw', 'figure'),
-    [Input('state-dropdown', 'value')],
-    [Input('slider', 'value')])
+    [Input('state-dropdown', 'value')])
     
 # Update Figure
-def update_figure(state_values,month_values):
+def update_figure(state_values):
 
     if state_values is None:
         dff = state_df.copy()
@@ -581,9 +639,6 @@ def update_figure(state_values,month_values):
         temp = state_df.loc[state_df['state'].isin(state_values)]
             
         dff = temp.pivot(index='date',columns='state',values='new_deaths')
-    
-    # Filter by months
-    dff = dff.loc[dt.datetime.strptime(months[month_values[0]],"%B %Y") : dt.datetime.strptime(months[month_values[1]],"%B %Y")+ MonthEnd(1)]
     
     fig = go.Figure()
     for column in dff.columns.to_list():
@@ -634,11 +689,10 @@ def update_figure(state_values,month_values):
 
 @app.callback(
     Output('newdeaths_pc', 'figure'),
-    [Input('state-dropdown', 'value')],
-    [Input('slider', 'value')])
+    [Input('state-dropdown', 'value')])
     
 # Update Figure
-def update_figure(state_values,month_values):
+def update_figure(state_values):
 
     if state_values is None:
         dff = state_df.copy()
@@ -656,9 +710,6 @@ def update_figure(state_values,month_values):
         temp['new_deaths'] = 1e+4*temp['new_deaths']/temp['POP'] 
             
         dff = temp.pivot(index='date',columns='state',values='new_deaths')
-    
-    # Filter by months
-    dff = dff.loc[dt.datetime.strptime(months[month_values[0]],"%B %Y") : dt.datetime.strptime(months[month_values[1]],"%B %Y")+ MonthEnd(1)]
     
     fig = go.Figure()
     for column in dff.columns.to_list():
@@ -706,7 +757,7 @@ def update_figure(state_values,month_values):
 
 # ## (Row 4, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[29]:
+# In[224]:
 
 
 #===========================================
@@ -715,11 +766,10 @@ def update_figure(state_values,month_values):
 
 @app.callback(
     Output('totdeaths_raw', 'figure'),
-    [Input('state-dropdown', 'value')],
-    [Input('slider', 'value')])
+    [Input('state-dropdown', 'value')])
     
 # Update Figure
-def update_figure(state_values,month_values):
+def update_figure(state_values):
 
     if state_values is None:
         dff = state_df.copy()
@@ -731,9 +781,6 @@ def update_figure(state_values,month_values):
         temp = state_df.loc[state_df['state'].isin(state_values)]
             
         dff = temp.pivot(index='date',columns='state',values='total_deaths')
-    
-    # Filter by months
-    dff = dff.loc[dt.datetime.strptime(months[month_values[0]],"%B %Y") : dt.datetime.strptime(months[month_values[1]],"%B %Y")+ MonthEnd(1)]
     
     fig = go.Figure()
     for column in dff.columns.to_list():
@@ -785,11 +832,10 @@ def update_figure(state_values,month_values):
 
 @app.callback(
     Output('totdeaths_pc', 'figure'),
-    [Input('state-dropdown', 'value')],
-    [Input('slider', 'value')])
+    [Input('state-dropdown', 'value')])
     
 # Update Figure
-def update_figure(state_values,month_values):
+def update_figure(state_values):
 
     if state_values is None:
         dff = state_df.copy()
@@ -807,9 +853,6 @@ def update_figure(state_values,month_values):
         temp['total_deaths'] = 1e+4*temp['total_deaths']/temp['POP'] 
             
         dff = temp.pivot(index='date',columns='state',values='total_deaths')
-    
-    # Filter by months
-    dff = dff.loc[dt.datetime.strptime(months[month_values[0]],"%B %Y") : dt.datetime.strptime(months[month_values[1]],"%B %Y")+ MonthEnd(1)]
     
     fig = go.Figure()
     for column in dff.columns.to_list():
@@ -856,7 +899,7 @@ def update_figure(state_values,month_values):
     return fig
 
 
-# In[30]:
+# In[225]:
 
 
 #===========================================
@@ -973,7 +1016,7 @@ def update_figure(state_values):
     return fig
 
 
-# In[31]:
+# In[226]:
 
 
 modal_calc = html.Div(
@@ -1057,10 +1100,50 @@ def toggle_modal(n1, n2, is_open):
         return not is_open
     return is_open
 
+modal_data_age = html.Div(
+    [
+        dbc.Button("About Weekly Death Data", id="open_data_age"),
+        dbc.Modal(
+            [
+                dbc.ModalHeader("About the Data"),
+                dbc.ModalBody(
+                dcc.Markdown(
+                            f"""
+                            Data presented are raw death counts from all causes by week-of-year.
+                            Death counts are from the National Vital Statistics System database since this is the timeliest mortality data.
+                            Number of deaths reported correspond to total number of deaths received and coded as of the date of analysis
+                            but may not represent all deaths that occurred in that period, especially for recent data as
+                            the time lag between when the death occurred and when the death certificate is completed, submitted to NCHS and 
+                            processed for reporting purposes can be large -- between 1 and 8 weeks depending upon jurisdiction. 
+                            Data for New York state exclude New York City. Expected deaths based on simple average deaths 
+                            by week-of-year for 2015-2019.
+                            """
+                            )
+                            ),
+                dbc.ModalFooter(
+                    dbc.Button("Close", id="close_data_age", className="ml-auto")
+                ),
+            ],
+            id="modal_data_age",
+        ),
+    ],
+    style={"margin-left": "15px","margin-top": "15px"}
+)
+
+@app.callback(
+    Output("modal_data_age", "is_open"),
+    [Input("open_data_age", "n_clicks"), Input("close_data_age", "n_clicks")],
+    [State("modal_data_age", "is_open")],
+)
+def toggle_modal(n1, n2, is_open):
+    if n1 or n2:
+        return not is_open
+    return is_open
+
 
 # ## Call-backs and Control Utilities
 
-# In[32]:
+# In[227]:
 
 
 # Dropdown
@@ -1091,48 +1174,38 @@ state_dropdown_alt = html.P([
                         'display': 'inline-block',
                         'padding-left' : '10px'})
 
-# range slider
-slider = html.P([
-            html.Label("Select Time Period"),
-            dcc.RangeSlider(id = 'slider',
-                        marks = {i : months[i] for i in range(0, len(months))},
-                        min = 0,
-                        max = len(months)-1,
-                        value = [0, len(months)-1])
-            ], style = {'width' : '90%',
-                        'padding-left': '20px',
-                        'fontSize' : '20px',
-                        'display': 'inline-block'})
+# Dropdown
+state_dropdown_age = html.P([
+            dcc.Dropdown(
+            id='state-dropdown_age',
+            options=[{'label': i, 'value': i} for i in excess_deaths_age['state'].dropna().unique().tolist()],
+            multi=False,
+            value='US',
+            searchable= True)
+            ], style = {'height': '20px',
+                        'width' : '25%',
+                        'fontSize' : '15px',
+                        'display': 'inline-block',
+                        'padding-left' : '10px'})
+
+# Dropdown
+state_dropdown_age_group = html.P([
+            dcc.Dropdown(
+            id='state-dropdown_age_group',
+            options=[{'label': i, 'value': i} for i in excess_deaths_age['age_group'].dropna().unique().tolist()],
+            multi=False,
+            value='85 years and older',
+            searchable= True)
+            ], style = {'height': '20px',
+                        'width' : '25%',
+                        'fontSize' : '15px',
+                        'display': 'inline-block',
+                        'padding-left' : '10px'})
 
 
 # ## Define HTML
 
-# In[33]:
-
-
-#####################
-# Header and Footer
-#####################
-# https://dash-bootstrap-components.opensource.faculty.ai/docs/components/navbar/
-
-navbar = dbc.NavbarSimple(
-    brand="COVID-19 DASHBOARD: " + today ,
-    brand_href="#",
-    color="dark",
-    fixed="top",
-    dark=True
-    )
-
-navbar_footer = dbc.NavbarSimple(
-    brand="Jeff Thurk // jeffthurk.com // Department of Economics // University of Georgia",
-    color="light",
-    #fixed="bottom",
-    #sticky=True,
-    #dark=True,
-    )
-
-
-# In[34]:
+# In[228]:
 
 
 #---------------------------------------------------------------------------
@@ -1148,15 +1221,15 @@ app.layout = dbc.Container(fluid=True, children=[
     ## 
     dbc.Row([
         dbc.Col(width=12, children=[
-        state_dropdown, slider,
+        state_dropdown,
         html.Br(),html.Br()
         ]),
     ]),
     
     dbc.Row([
         dbc.Col(width=12, children=[   
-            dbc.Row(
-            children=[html.H4("Observed vs Expected Deaths in:  "),state_dropdown_alt]),
+            dbc.Col(dbc.Row(
+            children=[html.H4("Observed vs Expected Deaths in:  "),state_dropdown_alt])),
             dbc.Col(dcc.Graph(id="excess_deaths")),
             modal_data,html.Br(),html.Br(),
             
@@ -1164,6 +1237,12 @@ app.layout = dbc.Container(fluid=True, children=[
             dbc.Col(dcc.Graph(id="excess_deaths_states")),
             modal_calc,html.Br(),html.Br(),
 
+            dbc.Col(dbc.Row(
+            children=[html.H4("Observed vs Expected Deaths in:  "),state_dropdown_age, 
+                      html.H4("; Age Group:  "), state_dropdown_age_group])),
+            dbc.Col(dcc.Graph(id="excess_deaths_age")),
+            modal_data_age,html.Br(),html.Br(),
+            
             dbc.Col(html.H4("Vaccination Progress")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="vaccines_raw"), label="Raw Data"),
@@ -1200,17 +1279,11 @@ app.layout = dbc.Container(fluid=True, children=[
 
 # # 3. Run Application
 
-# In[35]:
+# In[229]:
 
 
 if __name__ == '__main__':
     #app.run_server(debug=True, use_reloader=False)  # Jupyter
     app.run_server(debug=False,host='0.0.0.0')    # Use this line prior to heroku deployment
     #application.run(debug=False, port=8080) # Use this line for AWS
-
-
-# In[ ]:
-
-
-
 
