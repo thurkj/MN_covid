@@ -288,7 +288,7 @@ def update_figure(state_values,age_group):
         go.Bar(
             x = dff.index,
             y = dff['observed_deaths'],
-            name = '2020-2021 Observed',
+            name = '2020-2021',
             opacity=0.3,
             marker_color='blue',
             #hovertemplate = '<extra></extra>County: ' + column + '<br>Date: ' + pd.to_datetime(dff.index).strftime('%Y-%m-%d') +'<br>Value: %{y:.1f}'
