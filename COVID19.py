@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[246]:
+# In[328]:
 
 
 # Load necessary packages
@@ -26,16 +26,17 @@ from dash.dependencies import Input, Output, State
 
 # # 1. Read Data
 
-# In[247]:
+# In[329]:
 
 
 excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
 excess_deaths_age = pd.read_csv('s3://mncovid19data/excess_deaths_age.csv',index_col=False)
+excess_deaths_race = pd.read_csv('s3://mncovid19data/excess_deaths_race.csv',index_col=False)
 state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
 vaccines = pd.read_csv('s3://mncovid19data/vaccines.csv',index_col=False)
 
 
-# In[248]:
+# In[330]:
 
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
@@ -56,7 +57,7 @@ months = temp.unique().tolist()
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[249]:
+# In[331]:
 
 
 # Initialize Dash
@@ -68,7 +69,7 @@ server = app.server  # Name Heroku will look for
 
 # ## (Row 2, Col 1) U.S. Excess Deaths
 
-# In[250]:
+# In[332]:
 
 
 
@@ -164,7 +165,7 @@ def update_figure(state_values):
 
 # ## (Row 2, Col 2) Excess Deaths in Different States
 
-# In[251]:
+# In[333]:
 
 
 @app.callback(
@@ -255,9 +256,9 @@ def update_figure(state_values):
     return fig
 
 
-# ## Excess Deaths by Age Group
+# ## Excess Deaths by Age
 
-# In[252]:
+# In[334]:
 
 
 @app.callback(
@@ -329,9 +330,83 @@ def update_figure(state_values,age_group):
     return fig
 
 
+# ## Excess Deaths by Race and Ethnicity
+
+# In[335]:
+
+
+@app.callback(
+    Output('excess_deaths_race', 'figure'),
+    [Input('state-dropdown_race', 'value')],
+    [Input('state-dropdown_race_group', 'value')])
+
+# Update Figure
+def update_figure(state_values,race):
+
+    dff = excess_deaths_race.loc[(excess_deaths_race['state'].isin([state_values])&excess_deaths_race['race_ethnicity'].isin([race]))]
+    dff.set_index('week',inplace=True)
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x = dff.index,
+            y = dff['expected_deaths'],
+            name = 'Expected',
+            mode='lines',
+            marker_color='orange',
+            opacity=0.9,
+            #hovertemplate = '<extra></extra>County: ' + column + '<br>Date: ' + pd.to_datetime(dff.index).strftime('%Y-%m-%d') +'<br>Value: %{y:.1f}'
+        )
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x = dff.index,
+            y = dff['observed_deaths'],
+            name = '2020-2021',
+            opacity=0.3,
+            marker_color='blue',
+            #hovertemplate = '<extra></extra>County: ' + column + '<br>Date: ' + pd.to_datetime(dff.index).strftime('%Y-%m-%d') +'<br>Value: %{y:.1f}'
+        )
+    )
+
+    # Update remaining layout properties
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=10, b=0),
+        hovermode='x unified',
+        plot_bgcolor='rgba(0,0,0,0)',
+        hoverlabel=dict(
+            bgcolor = 'white',
+            font_size=12),
+        xaxis=dict(
+            title="Week of Year",
+            zeroline=True,
+            showgrid=False,  # Removes X-axis grid lines 
+            fixedrange = True
+            ),
+        yaxis=dict(
+            title="Total Weekly Deaths",
+            zeroline=True, 
+            showgrid=False,  # Removes Y-axis grid lines
+            fixedrange = True
+            ),
+        annotations=[  # Source annotation
+                        dict(xref='paper',
+                            yref='paper',
+                            x=0.5, y=1.0,
+                            showarrow=False,
+                            text ="Source: National Center for Health Statistics.")
+                    ]
+    )
+
+    fig.update_xaxes(showline=True, linewidth=2, linecolor='black')
+    fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
+    return fig
+
+
 # ##  (Row 3, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[253]:
+# In[336]:
 
 
 #===========================================
@@ -473,7 +548,7 @@ def update_figure(state_values):
 
 # ## (Row 3, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[254]:
+# In[337]:
 
 
 #===========================================
@@ -615,7 +690,7 @@ def update_figure(state_values):
 
 # ## (Row 4, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[255]:
+# In[338]:
 
 
 #===========================================
@@ -757,7 +832,7 @@ def update_figure(state_values):
 
 # ## (Row 4, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[256]:
+# In[339]:
 
 
 #===========================================
@@ -899,7 +974,7 @@ def update_figure(state_values):
     return fig
 
 
-# In[257]:
+# In[340]:
 
 
 #===========================================
@@ -1016,7 +1091,7 @@ def update_figure(state_values):
     return fig
 
 
-# In[258]:
+# In[341]:
 
 
 modal_calc = html.Div(
@@ -1140,10 +1215,50 @@ def toggle_modal(n1, n2, is_open):
         return not is_open
     return is_open
 
+modal_data_race = html.Div(
+    [
+        dbc.Button("About Weekly Death Data", id="open_data_race"),
+        dbc.Modal(
+            [
+                dbc.ModalHeader("About the Data"),
+                dbc.ModalBody(
+                dcc.Markdown(
+                            f"""
+                            Data presented are raw death counts from all causes by week-of-year.
+                            Death counts are from the National Vital Statistics System database since this is the timeliest mortality data.
+                            Number of deaths reported correspond to total number of deaths received and coded as of the date of analysis
+                            but may not represent all deaths that occurred in that period, especially for recent data as
+                            the time lag between when the death occurred and when the death certificate is completed, submitted to NCHS and 
+                            processed for reporting purposes can be large -- between 1 and 8 weeks depending upon jurisdiction. 
+                            Data for New York state exclude New York City. Expected deaths based on simple average deaths 
+                            by week-of-year for 2015-2019.
+                            """
+                            )
+                            ),
+                dbc.ModalFooter(
+                    dbc.Button("Close", id="close_data_race", className="ml-auto")
+                ),
+            ],
+            id="modal_data_race",
+        ),
+    ],
+    style={"margin-left": "15px","margin-top": "15px"}
+)
+
+@app.callback(
+    Output("modal_data_race", "is_open"),
+    [Input("open_data_race", "n_clicks"), Input("close_data_race", "n_clicks")],
+    [State("modal_data_race", "is_open")],
+)
+def toggle_modal(n1, n2, is_open):
+    if n1 or n2:
+        return not is_open
+    return is_open
+
 
 # ## Call-backs and Control Utilities
 
-# In[259]:
+# In[342]:
 
 
 # Dropdown
@@ -1202,10 +1317,38 @@ state_dropdown_age_group = html.P([
                         'display': 'inline-block',
                         'padding-left' : '10px'})
 
+# Dropdown
+state_dropdown_race = html.P([
+            dcc.Dropdown(
+            id='state-dropdown_race',
+            options=[{'label': i, 'value': i} for i in excess_deaths_race['state'].dropna().unique().tolist()],
+            multi=False,
+            value='US',
+            searchable= True)
+            ], style = {'height': '20px',
+                        'width' : '15%',
+                        'fontSize' : '15px',
+                        'display': 'inline-block',
+                        'padding-left' : '10px'})
+
+# Dropdown
+state_dropdown_race_group = html.P([
+            dcc.Dropdown(
+            id='state-dropdown_race_group',
+            options=[{'label': i, 'value': i} for i in excess_deaths_race['race_ethnicity'].dropna().unique().tolist()],
+            multi=False,
+            value='Non-Hispanic White',
+            searchable= True)
+            ], style = {'height': '20px',
+                        'width' : '25%',
+                        'fontSize' : '15px',
+                        'display': 'inline-block',
+                        'padding-left' : '10px'})
+
 
 # ## Define HTML
 
-# In[260]:
+# In[343]:
 
 
 #---------------------------------------------------------------------------
@@ -1243,31 +1386,37 @@ app.layout = dbc.Container(fluid=True, children=[
             dbc.Col(dcc.Graph(id="excess_deaths_age")),
             modal_data_age,html.Br(),html.Br(),
             
-            dbc.Col(html.H4("Figure 4: Vaccination Progress")), 
+            dbc.Col(dbc.Row(
+            children=[html.H4("Figure 4: Observed vs Expected Deaths in  "),state_dropdown_race, 
+                      html.H4("; Race/Ethnicity  "), state_dropdown_race_group])),
+            dbc.Col(dcc.Graph(id="excess_deaths_race")),
+            modal_data_race,html.Br(),html.Br(),
+            
+            dbc.Col(html.H4("Figure 5: Vaccination Progress")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="vaccines_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="vaccines_pc"), label="% of Total Population")
             ]),html.Br(),html.Br(),
             
-            dbc.Col(html.H4("Figure 5: New Cases (7-day Moving Avg.)")), 
+            dbc.Col(html.H4("Figure 6: New Cases (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="positive_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="positive_pc"), label="Per 10,000")
             ]),html.Br(),html.Br(),
             
-            dbc.Col(html.H4("Figure 6: New Hospitalizations (7-day Moving Avg.)")), 
+            dbc.Col(html.H4("Figure 7: New Hospitalizations (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="curhospital_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="curhospital_pc"), label="Per 10,000")
             ]),html.Br(),html.Br(),
             
-            dbc.Col(html.H4("Figure 7: New Deaths (7-day Moving Avg.)")),
+            dbc.Col(html.H4("Figure 8: New Deaths (7-day Moving Avg.)")),
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="newdeaths_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="newdeaths_pc"), label="Per 10,000")
             ]),html.Br(),html.Br(),
             
-            dbc.Col(html.H4("Figure 8: Total Deaths")),
+            dbc.Col(html.H4("Figure 9: Total Deaths")),
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="totdeaths_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="totdeaths_pc"), label="Per 10,000")
@@ -1279,7 +1428,7 @@ app.layout = dbc.Container(fluid=True, children=[
 
 # # 3. Run Application
 
-# In[261]:
+# In[344]:
 
 
 if __name__ == '__main__':
