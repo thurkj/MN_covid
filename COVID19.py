@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[214]:
+# In[246]:
 
 
 # Load necessary packages
@@ -26,7 +26,7 @@ from dash.dependencies import Input, Output, State
 
 # # 1. Read Data
 
-# In[215]:
+# In[247]:
 
 
 excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
@@ -35,7 +35,7 @@ state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
 vaccines = pd.read_csv('s3://mncovid19data/vaccines.csv',index_col=False)
 
 
-# In[216]:
+# In[248]:
 
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
@@ -56,7 +56,7 @@ months = temp.unique().tolist()
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[217]:
+# In[249]:
 
 
 # Initialize Dash
@@ -68,7 +68,7 @@ server = app.server  # Name Heroku will look for
 
 # ## (Row 2, Col 1) U.S. Excess Deaths
 
-# In[218]:
+# In[250]:
 
 
 
@@ -164,7 +164,7 @@ def update_figure(state_values):
 
 # ## (Row 2, Col 2) Excess Deaths in Different States
 
-# In[219]:
+# In[251]:
 
 
 @app.callback(
@@ -257,7 +257,7 @@ def update_figure(state_values):
 
 # ## Excess Deaths by Age Group
 
-# In[220]:
+# In[252]:
 
 
 @app.callback(
@@ -331,7 +331,7 @@ def update_figure(state_values,age_group):
 
 # ##  (Row 3, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[221]:
+# In[253]:
 
 
 #===========================================
@@ -473,7 +473,7 @@ def update_figure(state_values):
 
 # ## (Row 3, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[222]:
+# In[254]:
 
 
 #===========================================
@@ -615,7 +615,7 @@ def update_figure(state_values):
 
 # ## (Row 4, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[223]:
+# In[255]:
 
 
 #===========================================
@@ -757,7 +757,7 @@ def update_figure(state_values):
 
 # ## (Row 4, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[224]:
+# In[256]:
 
 
 #===========================================
@@ -899,7 +899,7 @@ def update_figure(state_values):
     return fig
 
 
-# In[225]:
+# In[257]:
 
 
 #===========================================
@@ -1016,7 +1016,7 @@ def update_figure(state_values):
     return fig
 
 
-# In[226]:
+# In[258]:
 
 
 modal_calc = html.Div(
@@ -1143,7 +1143,7 @@ def toggle_modal(n1, n2, is_open):
 
 # ## Call-backs and Control Utilities
 
-# In[227]:
+# In[259]:
 
 
 # Dropdown
@@ -1205,7 +1205,7 @@ state_dropdown_age_group = html.P([
 
 # ## Define HTML
 
-# In[228]:
+# In[260]:
 
 
 #---------------------------------------------------------------------------
@@ -1229,45 +1229,45 @@ app.layout = dbc.Container(fluid=True, children=[
     dbc.Row([
         dbc.Col(width=12, children=[   
             dbc.Col(dbc.Row(
-            children=[html.H4("Observed vs Expected Deaths in:  "),state_dropdown_alt])),
+            children=[html.H4("Figure 1: Observed vs Expected Deaths in  "),state_dropdown_alt])),
             dbc.Col(dcc.Graph(id="excess_deaths")),
             modal_data,html.Br(),html.Br(),
             
-            dbc.Col(html.H4("Excess Deaths by States")), 
+            dbc.Col(html.H4("Figure 2: Excess Deaths by States")), 
             dbc.Col(dcc.Graph(id="excess_deaths_states")),
             modal_calc,html.Br(),html.Br(),
 
             dbc.Col(dbc.Row(
-            children=[html.H4("Observed vs Expected Deaths in:  "),state_dropdown_age, 
-                      html.H4("; Age Group:  "), state_dropdown_age_group])),
+            children=[html.H4("Figure 3: Observed vs Expected Deaths in  "),state_dropdown_age, 
+                      html.H4("; Age Group  "), state_dropdown_age_group])),
             dbc.Col(dcc.Graph(id="excess_deaths_age")),
             modal_data_age,html.Br(),html.Br(),
             
-            dbc.Col(html.H4("Vaccination Progress")), 
+            dbc.Col(html.H4("Figure 4: Vaccination Progress")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="vaccines_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="vaccines_pc"), label="% of Total Population")
             ]),html.Br(),html.Br(),
             
-            dbc.Col(html.H4("New Cases (7-day Moving Avg.)")), 
+            dbc.Col(html.H4("Figure 5: New Cases (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="positive_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="positive_pc"), label="Per 10,000")
             ]),html.Br(),html.Br(),
             
-            dbc.Col(html.H4("New Hospitalizations (7-day Moving Avg.)")), 
+            dbc.Col(html.H4("Figure 6: New Hospitalizations (7-day Moving Avg.)")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="curhospital_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="curhospital_pc"), label="Per 10,000")
             ]),html.Br(),html.Br(),
             
-            dbc.Col(html.H4("New Deaths (7-day Moving Avg.)")),
+            dbc.Col(html.H4("Figure 7: New Deaths (7-day Moving Avg.)")),
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="newdeaths_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="newdeaths_pc"), label="Per 10,000")
             ]),html.Br(),html.Br(),
             
-            dbc.Col(html.H4("Total Deaths")),
+            dbc.Col(html.H4("Figure 8: Total Deaths")),
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="totdeaths_raw"), label="Raw Data"),
                 dbc.Tab(dcc.Graph(id="totdeaths_pc"), label="Per 10,000")
@@ -1279,7 +1279,7 @@ app.layout = dbc.Container(fluid=True, children=[
 
 # # 3. Run Application
 
-# In[229]:
+# In[261]:
 
 
 if __name__ == '__main__':
