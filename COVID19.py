@@ -1197,7 +1197,7 @@ state_dropdown_age_group = html.P([
             value='85 years and older',
             searchable= True)
             ], style = {'height': '20px',
-                        'width' : '15%',
+                        'width' : '25%',
                         'fontSize' : '15px',
                         'display': 'inline-block',
                         'padding-left' : '10px'})
