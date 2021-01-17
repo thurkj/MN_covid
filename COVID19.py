@@ -1163,7 +1163,7 @@ def update_figure(state_values):
                             yref='paper',
                             x=0.5, y=1.0,
                             showarrow=False,
-                            text ='Source: State Departments of Health')
+                            text ='Source: CDC and State Departments of Health')
                     ]   
     )
         
