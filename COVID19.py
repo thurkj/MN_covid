@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[328]:
+# In[197]:
 
 
 # Load necessary packages
@@ -10,6 +10,7 @@ import pandas as pd
 from pandas.tseries.offsets import MonthEnd
 import plotly.express as px        # high-level plotly module
 import plotly.graph_objects as go  # lower-level plotly module with more functions
+from plotly.subplots import make_subplots
 import datetime as dt              # for time and date
 import json                        # For loading county FIPS data
 
@@ -26,7 +27,7 @@ from dash.dependencies import Input, Output, State
 
 # # 1. Read Data
 
-# In[329]:
+# In[198]:
 
 
 excess_deaths = pd.read_csv('s3://mncovid19data/excess_deaths.csv',index_col=False)
@@ -35,8 +36,17 @@ excess_deaths_race = pd.read_csv('s3://mncovid19data/excess_deaths_race.csv',ind
 state_df = pd.read_csv('s3://mncovid19data/state_df.csv',index_col=False)
 vaccines = pd.read_csv('s3://mncovid19data/vaccines.csv',index_col=False)
 
+# Address some missing values
+vaccines['doses_admin_total'].replace(0, np.nan, inplace=True)
 
-# In[330]:
+vaccines['utilization'] = 100*vaccines['doses_admin_total']/vaccines['total_allocation'] 
+vaccines['share'] = 100*vaccines['doses_admin_total']/vaccines['POP'] 
+
+util_avg = np.mean(vaccines['utilization'])  # Average Utilization
+share_avg = np.mean(vaccines['share'])  # Average per capita vaccination
+
+
+# In[199]:
 
 
 today = dt.datetime.now().strftime('%B %d, %Y')  # today's date. this will be useful when sourcing results 
@@ -57,19 +67,20 @@ months = temp.unique().tolist()
 # 
 # Set-up main html and call-back structure for the application.
 
-# In[331]:
+# In[200]:
 
 
 # Initialize Dash
+app = dash.Dash(external_stylesheets=[dbc.themes.YETI])
 #app = dash.Dash(external_stylesheets=[dbc.themes.LUX])
-app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY])
+#app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY])
 app.title = 'Covid-19 U.S. Dashboard'
 server = app.server  # Name Heroku will look for
 
 
 # ## (Row 2, Col 1) U.S. Excess Deaths
 
-# In[332]:
+# In[201]:
 
 
 
@@ -165,7 +176,7 @@ def update_figure(state_values):
 
 # ## (Row 2, Col 2) Excess Deaths in Different States
 
-# In[333]:
+# In[202]:
 
 
 @app.callback(
@@ -258,7 +269,7 @@ def update_figure(state_values):
 
 # ## Excess Deaths by Age
 
-# In[334]:
+# In[203]:
 
 
 @app.callback(
@@ -332,7 +343,7 @@ def update_figure(state_values,age_group):
 
 # ## Excess Deaths by Race and Ethnicity
 
-# In[335]:
+# In[204]:
 
 
 @app.callback(
@@ -406,7 +417,7 @@ def update_figure(state_values,race):
 
 # ##  (Row 3, Col 1) Line Graph:  Positive Cases over Time by State (7-day Rolling Average)
 
-# In[336]:
+# In[205]:
 
 
 #===========================================
@@ -548,7 +559,7 @@ def update_figure(state_values):
 
 # ## (Row 3, Col 2)  Line Graph: Hospitalizations over Time by State (7-day Rolling Average)
 
-# In[337]:
+# In[206]:
 
 
 #===========================================
@@ -690,7 +701,7 @@ def update_figure(state_values):
 
 # ## (Row 4, Col 1)  Line Graph: Daily Deaths by State (7-day Rolling Average)
 
-# In[338]:
+# In[207]:
 
 
 #===========================================
@@ -832,7 +843,7 @@ def update_figure(state_values):
 
 # ## (Row 4, Col 2) Line Graph: Cumulative Deaths by State
 
-# In[339]:
+# In[208]:
 
 
 #===========================================
@@ -974,7 +985,7 @@ def update_figure(state_values):
     return fig
 
 
-# In[340]:
+# In[209]:
 
 
 #===========================================
@@ -1033,7 +1044,7 @@ def update_figure(state_values):
     return fig
 
 #===========================================
-# Vaccinations - % of Total
+# Vaccinations - % of Total Population
 #===========================================
 @app.callback(
     Output('vaccines_pc', 'figure'),
@@ -1048,13 +1059,11 @@ def update_figure(state_values):
     else:
         if not isinstance(state_values, list): state_values = [state_values]
         dff = vaccines.loc[vaccines['state'].isin(state_values)]
-    
-    # Convert to Percent
-    dff['doses_admin_total'] = 100*dff['doses_admin_total']/dff['POP'] 
-        
-    fig = px.bar(dff, x='state', y='doses_admin_total', 
-                 text='doses_admin_total', 
-                 labels={'doses_admin_total':'Percent of Total Population Vaccinated','state':'State'})
+            
+    fig = px.bar(dff, x='state', y='share', 
+                 text='share', 
+                 labels={'share':'Percent of Total Population Vaccinated',
+                         'state':'State (Red Line Indicates Average Across All States)'})
 
     fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
     fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
@@ -1088,10 +1097,99 @@ def update_figure(state_values):
         
     fig.update_xaxes(showline=True, linewidth=2, linecolor='black')
     fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
+    
+        # Add average
+    fig.add_shape(
+                type="line",
+                xref= 'paper',
+                x0= 0,
+                y0= share_avg, # use absolute value or variable here
+                x1= 1,
+                y1= share_avg, # ditto
+                line=dict(
+                    color="Red",
+                    width=2,
+                    dash="dash",
+                ),
+                layer = 'above'
+    )
+    return fig
+
+#===========================================
+# Vaccinations - Utilization
+#===========================================
+@app.callback(
+    Output('vaccines_util', 'figure'),
+    [Input('state-dropdown', 'value')])
+    
+# Update Figure
+def update_figure(state_values):
+    
+    if state_values is None:
+        dff = vaccines.copy()  
+        
+    else:
+        if not isinstance(state_values, list): state_values = [state_values]
+        dff = vaccines.loc[vaccines['state'].isin(state_values)]
+     
+    fig = px.bar(dff, x='state', y='utilization', 
+                 text='utilization', 
+                 labels={'utilization':'Percent of Vaccinates Admistered of Total Allocated',
+                         'state':'State (Red Line Indicates Average Across All States)'})
+
+    fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+    fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
+    
+    # Update remaining layout properties
+    fig.update_layout(
+        margin={"r":0,"t":10,"l":0,"b":0},
+        hovermode='closest',plot_bgcolor='rgba(0,0,0,0)',
+        hoverlabel=dict(
+            bgcolor = 'white',
+            font_size=16),
+
+        xaxis=dict(
+            zeroline=True,
+            showgrid=False,  # Removes X-axis grid lines 
+            fixedrange = True
+            ),
+        yaxis=dict(
+            zeroline=True, 
+            showgrid=False,  # Removes Y-axis grid lines
+            fixedrange = True
+            ),
+        annotations=[  # Source annotation
+                        dict(xref='paper',
+                            yref='paper',
+                            x=0.5, y=1.0,
+                            showarrow=False,
+                            text ='Source: State Departments of Health')
+                    ]   
+    )
+        
+    fig.update_xaxes(showline=True, linewidth=2, linecolor='black')
+    fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
+    
+    # Add average
+    fig.add_shape(
+                type="line",
+                xref= 'paper',
+                x0= 0,
+                y0= util_avg, # use absolute value or variable here
+                x1= 1,
+                y1= util_avg, # ditto
+                line=dict(
+                    color="Red",
+                    width=2,
+                    dash="dash",
+                ),
+                layer = 'above'
+    )
+        
     return fig
 
 
-# In[341]:
+# In[210]:
 
 
 modal_calc = html.Div(
@@ -1258,7 +1356,7 @@ def toggle_modal(n1, n2, is_open):
 
 # ## Call-backs and Control Utilities
 
-# In[342]:
+# In[211]:
 
 
 # Dropdown
@@ -1348,7 +1446,7 @@ state_dropdown_race_group = html.P([
 
 # ## Define HTML
 
-# In[343]:
+# In[212]:
 
 
 #---------------------------------------------------------------------------
@@ -1395,7 +1493,8 @@ app.layout = dbc.Container(fluid=True, children=[
             dbc.Col(html.H4("Figure 5: Vaccination Progress")), 
             dbc.Tabs(className="nav", children=[
                 dbc.Tab(dcc.Graph(id="vaccines_raw"), label="Raw Data"),
-                dbc.Tab(dcc.Graph(id="vaccines_pc"), label="% of Total Population")
+                dbc.Tab(dcc.Graph(id="vaccines_pc"), label="% of Total Population"),
+                dbc.Tab(dcc.Graph(id="vaccines_util"), label="Vaccine Utilization")
             ]),html.Br(),html.Br(),
             
             dbc.Col(html.H4("Figure 6: New Cases (7-day Moving Avg.)")), 
@@ -1428,7 +1527,7 @@ app.layout = dbc.Container(fluid=True, children=[
 
 # # 3. Run Application
 
-# In[344]:
+# In[213]:
 
 
 if __name__ == '__main__':
